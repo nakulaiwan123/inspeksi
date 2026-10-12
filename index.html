@@ -77,8 +77,6 @@ dialog::backdrop{background:rgba(0,0,0,.62);-webkit-backdrop-filter:blur(4px);ba
 <body>
 <div id="app"></div>
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
-<input type="file" id="fcam" accept="image/*" capture="environment" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
-<input type="file" id="fgal" accept="image/*" multiple style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
 /* ================= util ================= */
@@ -235,12 +233,13 @@ async function watermark(file,lines){const bm=await loadBitmap(file);const w0=bm
  const fs=Math.max(14,Math.round(w/45)),pad=Math.round(fs*.6),bh=lines.length*(fs*1.25)+pad*2;x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,hh-bh,w,bh);x.fillStyle='#fff';x.font=`${fs}px sans-serif`;x.textBaseline='top';lines.forEach((l,i)=>x.fillText(l,pad,hh-bh+pad+i*fs*1.25,w-pad*2));
  return new Promise(r=>c.toBlob(r,'image/jpeg',.8))}
 let camCtx=null;
-function takePhoto(rec,ref,label,after,gal){camCtx={rec,ref,label,after,gal:!!gal};const f=$(gal?'#fgal':'#fcam');f.value='';f.click()}
-async function onPick(e){const files=[...e.target.files];if(!files.length||!camCtx)return;const{rec,ref,label,after,gal}=camCtx;let fail=0,last='';
+// input file dibuat BARU tiap tombol foto ditekan (input lama bisa dianggap Chrome HP masih terbuka setelah pindah aplikasi)
+let camInp=null;
+function takePhoto(rec,ref,label,after,gal){const ctx={rec,ref,label,after,gal:!!gal};if(camInp){camInp.remove();camInp=null}const f=document.createElement('input');f.type='file';f.accept='image/*';if(gal)f.multiple=true;else f.setAttribute('capture','environment');f.style.cssText='position:absolute;left:-9999px;width:1px;height:1px;opacity:0';f.addEventListener('change',e=>onPick(e,ctx));document.body.append(f);camInp=f;f.click()}
+async function onPick(e,ctx){const files=[...e.target.files];if(!files.length||!ctx)return;const{rec,ref,label,after,gal}=ctx;let fail=0,last='';
  for(const file of files){try{const g=rec.gps;const lines=[rec.gardu.nama+(rec.gardu.lokasi?' — '+rec.gardu.lokasi:''),(gal?'[GALERI] ':'')+nowTxt()+'  '+(g?`GPS ${g.lat}, ${g.lng} (±${g.acc}m)`:'GPS: -'),(rec.petugas||'')+' | '+label+(gal?' | dari galeri':'')];
   const blob=await watermark(file,lines);await dbPut('photos',{pid:rec.id+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),rid:rec.id,ref,ts:new Date().toISOString(),blob})}catch(err){fail++;last=err.message}}
- after&&after();if(fail)alert('Gagal memproses '+fail+' foto: '+last)}
-$('#fcam').addEventListener('change',onPick);$('#fgal').addEventListener('change',onPick);
+ if(camInp===e.target){camInp.remove();camInp=null}after&&after();if(fail)alert('Gagal memproses '+fail+' foto: '+last)}
 async function fillThumbs(box,rec,ref,locked){box.innerHTML='';const ps=(await photosOf(rec.id)).filter(p=>p.ref===ref);for(const p of ps){const u=URL.createObjectURL(p.blob);box.append(h('div',{class:'th'},h('img',{src:u,onclick:()=>window.open(u)}),locked?null:h('button',{class:'x',onclick:async()=>{if(confirm('Hapus foto ini?')){await dbDel('photos',p.pid);fillThumbs(box,rec,ref,locked)}}},'×')))}}
 
 /* ================= navigasi ================= */
