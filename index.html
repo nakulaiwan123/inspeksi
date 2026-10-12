@@ -77,7 +77,8 @@ dialog::backdrop{background:rgba(0,0,0,.62);-webkit-backdrop-filter:blur(4px);ba
 <body>
 <div id="app"></div>
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
-<input type="file" id="fcam" accept="image/*" capture="environment" hidden>
+<input type="file" id="fcam" accept="image/*" capture="environment" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+<input type="file" id="fgal" accept="image/*" multiple style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
 /* ================= util ================= */
@@ -234,9 +235,12 @@ async function watermark(file,lines){const bm=await loadBitmap(file);const w0=bm
  const fs=Math.max(14,Math.round(w/45)),pad=Math.round(fs*.6),bh=lines.length*(fs*1.25)+pad*2;x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,hh-bh,w,bh);x.fillStyle='#fff';x.font=`${fs}px sans-serif`;x.textBaseline='top';lines.forEach((l,i)=>x.fillText(l,pad,hh-bh+pad+i*fs*1.25,w-pad*2));
  return new Promise(r=>c.toBlob(r,'image/jpeg',.8))}
 let camCtx=null;
-function takePhoto(rec,ref,label,after){camCtx={rec,ref,label,after};const f=$('#fcam');f.value='';f.click()}
-$('#fcam').addEventListener('change',async e=>{const file=e.target.files[0];if(!file||!camCtx)return;const{rec,ref,label,after}=camCtx;try{const g=rec.gps;const lines=[rec.gardu.nama+(rec.gardu.lokasi?' — '+rec.gardu.lokasi:''),nowTxt()+'  '+(g?`GPS ${g.lat}, ${g.lng} (±${g.acc}m)`:'GPS: -'),(rec.petugas||'')+' | '+label];
- const blob=await watermark(file,lines);await dbPut('photos',{pid:rec.id+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),rid:rec.id,ref,ts:new Date().toISOString(),blob});after&&after()}catch(err){alert('Gagal memproses foto: '+err.message)}});
+function takePhoto(rec,ref,label,after,gal){camCtx={rec,ref,label,after,gal:!!gal};const f=$(gal?'#fgal':'#fcam');f.value='';f.click()}
+async function onPick(e){const files=[...e.target.files];if(!files.length||!camCtx)return;const{rec,ref,label,after,gal}=camCtx;let fail=0,last='';
+ for(const file of files){try{const g=rec.gps;const lines=[rec.gardu.nama+(rec.gardu.lokasi?' — '+rec.gardu.lokasi:''),(gal?'[GALERI] ':'')+nowTxt()+'  '+(g?`GPS ${g.lat}, ${g.lng} (±${g.acc}m)`:'GPS: -'),(rec.petugas||'')+' | '+label+(gal?' | dari galeri':'')];
+  const blob=await watermark(file,lines);await dbPut('photos',{pid:rec.id+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),rid:rec.id,ref,ts:new Date().toISOString(),blob})}catch(err){fail++;last=err.message}}
+ after&&after();if(fail)alert('Gagal memproses '+fail+' foto: '+last)}
+$('#fcam').addEventListener('change',onPick);$('#fgal').addEventListener('change',onPick);
 async function fillThumbs(box,rec,ref,locked){box.innerHTML='';const ps=(await photosOf(rec.id)).filter(p=>p.ref===ref);for(const p of ps){const u=URL.createObjectURL(p.blob);box.append(h('div',{class:'th'},h('img',{src:u,onclick:()=>window.open(u)}),locked?null:h('button',{class:'x',onclick:async()=>{if(confirm('Hapus foto ini?')){await dbDel('photos',p.pid);fillThumbs(box,rec,ref,locked)}}},'×')))}}
 
 /* ================= navigasi ================= */
@@ -385,7 +389,7 @@ function renderInspeksi(fs,rec,persist,locked){const fd=FORMS[rec.form];
    const note=h('input',{type:'text',placeholder:'Catatan temuan',value:a.note||''});note.addEventListener('input',()=>{a.note=note.value;persist()});det.append(note);
    if(it.extra){const nv=h('input',{type:'text',placeholder:it.extra,value:a.nilai||'',style:'flex:0 1 110px'});nv.addEventListener('input',()=>{a.nilai=nv.value;persist()});det.append(nv)}
    const thumbs=h('div',{class:'thumbs'});const ref='item'+it.n;
-   if(!locked)det.append(h('button',{type:'button',class:'btn sec sm',style:'flex:0',onclick:()=>takePhoto(rec,ref,`#${it.n} ${it.t}`+(a.v?` = ${a.v}`:''),()=>fillThumbs(thumbs,rec,ref,locked))},'📷 Foto'));
+   if(!locked){const lb=()=>`#${it.n} ${it.t}`+(a.v?` = ${a.v}`:''),af=()=>fillThumbs(thumbs,rec,ref,locked);det.append(h('button',{type:'button',class:'btn sec sm',style:'flex:0;white-space:nowrap',onclick:()=>takePhoto(rec,ref,lb(),af)},'📷 Foto'),h('button',{type:'button',class:'btn sec sm',style:'flex:0;white-space:nowrap',onclick:()=>takePhoto(rec,ref,lb(),af,true)},'🖼 Galeri'))}
    det.append(thumbs);fillThumbs(thumbs,rec,ref,locked);refresh();
    let ohmEl=null;if(it.ohm){const ov=h('input',{type:'text',inputmode:'decimal',placeholder:'mis. 0,29  (atau: Tidak terjangkau)',value:a.nilai||'',disabled:!!locked});ov.addEventListener('input',()=>{a.nilai=ov.value;persist()});ohmEl=h('div',{style:'margin-top:8px'},h('label',{class:'f'},it.ohm),ov)}
    row.append(chipsEl,...(ohmEl?[ohmEl]:[]),det);card.append(row)}
@@ -395,7 +399,7 @@ function renderInspeksi(fs,rec,persist,locked){const fd=FORMS[rec.form];
  const ta=(label,key)=>{const t=h('textarea',null,ft[key]||'');t.addEventListener('input',()=>{ft[key]=t.value;persist()});return h('div',null,h('label',{class:'f'},label),t)};
  fs.append(h('h2',null,'Penutup'),h('div',{class:'card'},ta('Catatan hasil inspeksi — tulis manual (temuan dari hasil inspeksi otomatis ditambahkan di bawahnya)','catatan'),optsRow('Health Index',HEALTH,'health'),ta('Catatan lain','catatan_lain'),
   optsRow('KWH pantau terpasang',['Ya','Tidak'],'kwh_pantau'),h('div',{class:'row'},field('Merk KWH / modem',ft.merk_kwh,v=>{ft.merk_kwh=v;persist()}),field('Ratio CT',ft.ratio_ct,v=>{ft.ratio_ct=v;persist()}))));
- const umum=h('div',{class:'card'},h('div',{class:'t'},'Foto — WAJIB (min. '+MIN_FOTO_UMUM+', boleh lebih dari 1)'));const th=h('div',{class:'thumbs'});if(!locked)umum.append(h('button',{type:'button',class:'btn sec sm',onclick:()=>takePhoto(rec,'umum','Foto umum',()=>fillThumbs(th,rec,'umum',locked))},'📷 Tambah foto'));umum.append(th);fillThumbs(th,rec,'umum',locked);fs.append(umum)}
+ const umum=h('div',{class:'card'},h('div',{class:'t'},'Foto — WAJIB (min. '+MIN_FOTO_UMUM+', boleh lebih dari 1)'));const th=h('div',{class:'thumbs'});if(!locked)umum.append(h('div',{class:'row'},h('button',{type:'button',class:'btn sec sm',onclick:()=>takePhoto(rec,'umum','Foto umum',()=>fillThumbs(th,rec,'umum',locked))},'📷 Ambil foto'),h('button',{type:'button',class:'btn sec sm',onclick:()=>takePhoto(rec,'umum','Foto umum',()=>fillThumbs(th,rec,'umum',locked),true)},'🖼 Pilih dari galeri')));umum.append(th);fillThumbs(th,rec,'umum',locked);fs.append(umum)}
 
 /* ---- beban ---- */
 const JR=[['ir','I-R (A)'],['is','I-S (A)'],['it','I-T (A)'],['in','I-N (A)']];
@@ -425,7 +429,7 @@ function renderBeban(fs,rec,persist){const b=rec.beban;fixBeban(b);const res=h('
  const kc=h('div',{class:'card'},h('div',{class:'t'},'Kubikel & jenis gardu'));const kg=h('div',{class:'grid'});for(const[k,l]of KB){const i=h('input',{type:'text',value:b.kubikel[k]||''});i.addEventListener('input',()=>{b.kubikel[k]=i.value;persist()});kg.append(h('div',null,h('label',null,l),i))}kc.append(kg);fs.append(kc);
  const sr=h('textarea',null,b.saran||'');sr.addEventListener('input',()=>{b.saran=sr.value;persist()});
  fs.append(h('h2',null,'Saran-saran & tanda tangan'),h('div',{class:'card'},h('label',{class:'f'},'Saran-saran'),sr,field('Asman Prev',b.ttd.asman,v=>{b.ttd.asman=v;persist()}),field('Pengawas',b.ttd.pengawas,v=>{b.ttd.pengawas=v;persist()}),field('Petugas pelaksana',b.ttd.petugas,v=>{b.ttd.petugas=v;persist()}),h('div',{class:'mut',style:'margin-top:6px'},'Tanggal laporan terisi otomatis saat "Selesai & kunci".')));
- const th=h('div',{class:'thumbs'});fs.append(h('div',{class:'card'},h('div',{class:'t'},'Foto — WAJIB (min. '+MIN_FOTO_UMUM+', boleh lebih dari 1): panel / papan ukur'),rec.status==='selesai'?null:h('button',{type:'button',class:'btn sec sm',onclick:()=>takePhoto(rec,'umum','Pengukuran beban',()=>fillThumbs(th,rec,'umum',false))},'📷 Tambah foto'),th));fillThumbs(th,rec,'umum',rec.status==='selesai');upd()}
+ const th=h('div',{class:'thumbs'});fs.append(h('div',{class:'card'},h('div',{class:'t'},'Foto — WAJIB (min. '+MIN_FOTO_UMUM+', boleh lebih dari 1): panel / papan ukur'),rec.status==='selesai'?null:h('div',{class:'row'},h('button',{type:'button',class:'btn sec sm',onclick:()=>takePhoto(rec,'umum','Pengukuran beban',()=>fillThumbs(th,rec,'umum',false))},'📷 Ambil foto'),h('button',{type:'button',class:'btn sec sm',onclick:()=>takePhoto(rec,'umum','Pengukuran beban',()=>fillThumbs(th,rec,'umum',false),true)},'🖼 Pilih dari galeri')),th));fillThumbs(th,rec,'umum',rec.status==='selesai');upd()}
 
 /* ================= selesai & kunci ================= */
 async function selesai(rec){const errs=[];if(!rec.gardu.nama)errs.push('Nama gardu kosong');if(!rec.gardu.lokasi)errs.push('Area belum dipilih');if(!rec.petugas)errs.push('Petugas pelaksana kosong');
