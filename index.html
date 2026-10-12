@@ -306,7 +306,7 @@ function sha256(ascii){function rr(v,a){return(v>>>a)|(v<<(32-a))}var mp=Math.po
   for(i=0;i<8;i++)hash[i]=(hash[i]+old[i])|0}
  for(i=0;i<8;i++)for(j=3;j+1;j--){var b=(hash[i]>>(j*8))&255;result+=((b<16)?0:'')+b.toString(16)}return result}
 async function hashPin(p){return sha256('ig1:'+String(p))}
-async function adminOk(why){if(Date.now()<adminUntil)return true;const ph=await dbGet('meta','pinhash');
+async function adminOk(why,fresh){if(!fresh&&Date.now()<adminUntil)return true;const ph=await dbGet('meta','pinhash');
  if(!ph)return true;
  if(Date.now()<pinLock){alert('Terlalu banyak salah. Coba lagi 1 menit lagi.');return false}
  const o=await dlg('PIN admin: '+why,[{key:'a',label:'Masukkan PIN',pw:1}]);if(!o)return false;
@@ -347,6 +347,17 @@ function homeTabs(list){const nK=list.filter(terkirimT).length,nA=list.length-nK
   tb('c-menu','menu','Menu',false,openMenu))}
 
 /* ================= HOME ================= */
+
+// hapus data yang SUDAH TERKIRIM dari HP (khusus admin). Data di PC tidak terpengaruh; HP dan PC tidak tersambung, jadi hapus di PC tidak otomatis menghapus di HP.
+function hapusTerkirimBtn(t){return h('button',{type:'button',class:'btn sec sm',style:'flex:0',title:'Hapus dari HP (sudah terkirim)','aria-label':'Hapus dari HP',onclick:ev=>{ev.stopPropagation();hapusTerkirim(t)}},ico('trash',15))}
+async function hapusTerkirim(t){
+ if(!terkirimT(t))return alert('Hanya data yang sudah terkirim yang boleh dihapus dari HP.');
+ if(!(await adminOk('hapus data terkirim dari HP',true)))return;
+ const rs=S.records.filter(r=>r.gardu.id===t.id);
+ if(!confirm('Hapus '+t.nama+' dari HP?\n\n'+rs.length+' data inspeksi / ukur beban beserta fotonya dihapus dari HP ini. Data yang sudah terkirim ke PC tidak terpengaruh. Tidak bisa dibatalkan.'))return;
+ await catat('hapus-terkirim',t);
+ for(const r of rs){for(const p of await photosOf(r.id))await dbDel('photos',p.pid);await dbDel('records',r.id)}
+ S.tugas=S.tugas.filter(x=>x.id!==t.id);await saveTugas();renderHome()}
 function latestRec(garduId,form){const l=S.records.filter(r=>r.gardu.id===garduId&&r.form===form);l.sort((a,b)=>b.rev-a.rev||b.created.localeCompare(a.created));return l[0]}
 const LF={q:'',tgl:'',st:'',n:30,tab:'aktif'},PAGE=30;
 function terkirimT(t){if(stCode(t)!=='lengkap')return false;const rs=[latestRec(t.id,'tiang')||latestRec(t.id,'beton')];if(t.jenis!=='tm')rs.push(latestRec(t.id,'beban'));return rs.every(r=>r&&r.sentAt)}
@@ -355,7 +366,7 @@ async function renderHome(){await loadState();app.innerHTML='';
  {let ch=false;for(const t of S.tugas){if(t.jenis&&!t.jenisOleh&&!t.manual&&!S.records.some(r=>r.gardu.id===t.id)){t.jenis='';ch=true}}if(ch)await saveTugas()}
  app.append(topBar('Inspeksi Gardu',null,true));
  const m=h('main',{class:'hastab'});
- m.append(h('div',{class:'row',style:'margin-bottom:12px'},h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:()=>{const f=$('#fcsv');f.value='';f.click()}},ico('inbox',17),'Impor penugasan'),h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:async()=>addManual()},ico('plus',17),'+ Gardu manual')));
+ m.append(h('div',{class:'row',style:'margin-bottom:12px'},h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:()=>{const f=$('#fcsv');f.value='';f.click()}},ico('inbox',17),'Impor penugasan'),h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:async()=>addManual()},ico('plus',17),'Gardu manual')));
  // satu daftar gardu: penugasan + gardu yang sudah pernah diinspeksi tapi tidak ada di penugasan; status inspeksi/beban/pengiriman ada di kartu masing-masing
  const known=new Set(S.tugas.map(t=>t.id)),extra=[];for(const r of S.records){if(!known.has(r.gardu.id)){known.add(r.gardu.id);extra.push({...tugasOf(r),_extra:true})}}
  const list=[...S.tugas,...extra];
@@ -367,7 +378,7 @@ async function renderHome(){await loadState();app.innerHTML='';
   const garduCard=t=>{const sc=stCode(t),stt=terkirimT(t)?['Terkirim','ok']:sc==='lengkap'?['Selesai','ok']:sc==='proses'?['Proses','draft']:['Belum',''];
    const card=h('div',{class:'card',style:'cursor:pointer',role:'button',tabindex:'0',onclick:()=>bukaGardu(t)});
    card.append(h('div',{class:'row',style:'flex-wrap:nowrap;align-items:flex-start'},h('div',{style:'flex:1;min-width:0'},h('div',{class:'gname'},h('b',null,t.nama)),h('div',{class:'gmeta'},[!t.manual&&t.id,t.pic&&('PIC '+t.pic)].filter(Boolean).join(' · '))),h('span',{class:'badge '+stt[1],style:'flex:0;white-space:nowrap'},stt[0]),
-    t._extra?null:h('button',{type:'button',class:'btn sec sm',style:'flex:0',title:'Hapus dari daftar penugasan','aria-label':'Hapus dari daftar penugasan',onclick:async ev=>{ev.stopPropagation();if(!(await adminOk('hapus gardu dari penugasan')))return;if(confirm('Hapus dari daftar penugasan? (data inspeksi tetap tersimpan)')){await catat('hapus',t);S.tugas=S.tugas.filter(x=>x!==t);await saveTugas();renderHome()}}},ico('trash',15))));
+    LF.tab==='kirim'?hapusTerkirimBtn(t):t._extra?null:h('button',{type:'button',class:'btn sec sm',style:'flex:0',title:'Hapus dari daftar penugasan','aria-label':'Hapus dari daftar penugasan',onclick:async ev=>{ev.stopPropagation();if(!(await adminOk('hapus gardu dari penugasan')))return;if(confirm('Hapus dari daftar penugasan? (data inspeksi tetap tersimpan)')){await catat('hapus',t);S.tugas=S.tugas.filter(x=>x!==t);await saveTugas();renderHome()}}},ico('trash',15))));
    return card};
   // filter + tampil bertahap (daftar bisa ribuan gardu)
   const dates=[...new Set(list.map(t=>t.rencana).filter(Boolean))].sort();
