@@ -73,6 +73,35 @@ dialog::backdrop{background:rgba(0,0,0,.62);-webkit-backdrop-filter:blur(4px);ba
 .gmeta{font:12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--mut);margin-top:2px}
 .fil{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
 .fil input[type=text]{grid-column:1/-1}
+
+/* ===== ikon berwarna, menu geser, tab bawah ===== */
+.ico{--c:#64748b;flex:none;width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 24%,transparent)}
+.c-gardu{--c:light-dark(#0284c7,#38bdf8)}
+.c-terkirim{--c:light-dark(#15803d,#4ade80)}
+.c-kirim{--c:light-dark(#c2410c,#fb923c)}
+.c-menu{--c:light-dark(#475569,#94a3b8)}
+.c-impor{--c:light-dark(#2563eb,#60a5fa)}
+.c-manual{--c:light-dark(#7c3aed,#a78bfa)}
+.c-pin{--c:light-dark(#a16207,#facc15)}
+.c-tema{--c:light-dark(#0e7490,#22d3ee)}
+#scrim{position:fixed;inset:0;background:rgba(2,6,23,.55);z-index:40;opacity:0;pointer-events:none;transition:opacity .2s}
+#scrim.on{opacity:1;pointer-events:auto}
+#drawer{position:fixed;top:0;bottom:0;left:0;width:min(84vw,320px);background:var(--dlg);color:var(--tx);border-right:1px solid var(--bd2);z-index:41;transform:translateX(-102%);visibility:hidden;transition:transform .22s,visibility .22s;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);box-shadow:0 0 40px rgba(0,0,0,.5);overflow:auto}
+#drawer.on{transform:none;visibility:visible}
+.dh{display:flex;align-items:center;gap:10px;padding:16px 16px 8px}
+.dh b{display:block;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);text-shadow:var(--glow)}
+.dh small{display:block;font:600 10px ui-monospace,Consolas,monospace;letter-spacing:.1em;color:var(--mut)}
+.dsep{font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);padding:14px 16px 4px}
+.di{display:flex;align-items:center;gap:12px;width:calc(100% - 16px);margin:0 8px;text-align:left;background:none;border:1px solid transparent;border-radius:12px;padding:7px 8px;color:var(--tx);font-weight:700;font-size:15px;min-height:54px}
+.di:active{background:var(--card2);border-color:var(--bd)}
+.di small{display:block;font-weight:500;font-size:12px;color:var(--mut)}
+.dfoot{margin-top:auto;padding:14px 16px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--bd);color:var(--mut);font-size:12px}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;background:var(--hdr);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--bd);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+.tb{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:1px solid transparent;border-radius:12px;color:var(--mut);font-size:11px;font-weight:700;padding:6px 2px;min-height:56px;-webkit-tap-highlight-color:transparent}
+.tb svg{color:var(--c)}
+.tb.on{color:var(--tx);background:var(--secbg);border-color:var(--bd2)}
+.tb .n{position:absolute;top:2px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:99px;background:var(--bad);color:var(--badfg);font-size:11px;line-height:18px;text-align:center;padding:0 5px}
+main.hastab{padding-bottom:96px}
 </style>
 <script>try{var __t=localStorage.getItem("ig_tema");if(__t)document.documentElement.setAttribute("data-theme",__t)}catch(e){}</script>
 </head>
@@ -81,10 +110,11 @@ dialog::backdrop{background:rgba(0,0,0,.62);-webkit-backdrop-filter:blur(4px);ba
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
-const VERSI='12 Okt 2026 · v6d';
+const VERSI='12 Okt 2026 · v7 (menu)';
 /* ================= util ================= */
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){const v=attrs[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(k,v===true?'':v);}for(const c of kids.flat(2)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;}
 const ICON={bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',gauge:'<path d="M12 14l4-4"/><path d="M3.3 17a10 10 0 1 1 17.4 0"/>',inbox:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'};
+Object.assign(ICON,{menu:'<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',list:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',check:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'});
 function ico(n,sz){const s=document.createElementNS('http://www.w3.org/2000/svg','svg');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('width',sz||16);s.setAttribute('height',sz||16);s.setAttribute('fill','none');s.setAttribute('stroke','currentColor');s.setAttribute('stroke-width','2');s.setAttribute('stroke-linecap','round');s.setAttribute('stroke-linejoin','round');s.setAttribute('aria-hidden','true');s.innerHTML=ICON[n]||'';return s}
 const THEME={get(){try{return localStorage.getItem('ig_tema')||''}catch(e){return''}},set(v){try{localStorage.setItem('ig_tema',v)}catch(e){}}};
 function applyTheme(){const t=THEME.get();if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.removeAttribute('data-theme')}
@@ -261,8 +291,8 @@ async function fillThumbs(box,rec,ref,locked){box.innerHTML='';const ps=(await p
 
 /* ================= navigasi ================= */
 const app=$('#app');
-function topBar(title,back){const tb=h('button',{class:'ibtn',title:'Ganti tema terang/gelap','aria-label':'Ganti tema',onclick:()=>{THEME.set(isDark()?'light':'dark');applyTheme();tb.textContent='';tb.append(ico(isDark()?'moon':'sun',18))}},ico(isDark()?'moon':'sun',18));
- return h('header',{class:'top'},back?h('button',{onclick:back},'‹ Kembali'):h('div',{class:'logo'},ico('bolt',20)),h('h1',null,title),tb)}
+function topBar(title,back,home){const tb=h('button',{class:'ibtn',title:'Ganti tema terang/gelap','aria-label':'Ganti tema',onclick:()=>{THEME.set(isDark()?'light':'dark');applyTheme();tb.textContent='';tb.append(ico(isDark()?'moon':'sun',18))}},ico(isDark()?'moon':'sun',18));
+ return h('header',{class:'top'},back?h('button',{onclick:back},'‹ Kembali'):(home?h('button',{class:'ibtn',type:'button',title:'Menu','aria-label':'Buka menu',onclick:openMenu},ico('menu',20)):h('div',{class:'logo'},ico('bolt',20))),h('h1',null,title),tb)}
 function dlg(title,fields){return new Promise(res=>{const d=h('dialog');const inputs={};const f=h('form',{method:'dialog'},h('h3',null,title));for(const fl of fields){f.append(h('label',{class:'f'},fl.label));const i=fl.opts?h('select',null,fl.opts.map(o=>h('option',{value:o[0]},o[1]))):h('input',fl.pw?{type:'password',inputmode:'numeric',autocomplete:'off',maxlength:'6',value:''}:{type:'text',value:fl.value||''});if(fl.opts&&fl.value)i.value=fl.value;inputs[fl.key]=i;f.append(i)}
  f.append(h('div',{class:'row',style:'margin-top:12px'},h('button',{class:'btn sec',value:'x',type:'submit'},'Batal'),h('button',{class:'btn',value:'ok',type:'submit'},'OK')));d.append(f);document.body.append(d);d.addEventListener('close',()=>{const ok=d.returnValue==='ok';const o={};for(const k in inputs)o[k]=inputs[k].value.trim();d.remove();res(ok?o:null)});d.showModal()})}
 /* ===== PIN admin: impor penugasan, tambah gardu manual, hapus gardu ===== */
@@ -290,6 +320,32 @@ const JENIS_OPTS=[['','— pilih —'],['tiang','Gardu Tiang'],['beton','Gardu B
 const JENIS_LBL={tiang:'Tiang',beton:'Beton',tm:'Pelanggan TM'};
 const formOf=j=>j==='tm'?'beton':j;
 
+
+/* ===== menu geser (☰) + tab bawah di beranda ===== */
+const kirimQueue=()=>S.records.filter(r=>r.status==='selesai'&&!r.sentAt);
+function kirimSekarang(){const q=kirimQueue();if(!q.length)return alert('Belum ada inspeksi selesai yang belum dikirim.');kirim(q)}
+function closeMenu(){const d=$('#drawer');if(d){d.classList.remove('on');$('#scrim').classList.remove('on')}}
+function openMenu(){let d=$('#drawer');
+ if(!d){document.body.append(h('div',{id:'scrim',onclick:closeMenu}),h('aside',{id:'drawer','aria-label':'Menu'}));d=$('#drawer');addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()})}
+ const item=(cls,icon,label,sub,fn)=>h('button',{class:'di',type:'button',onclick:async()=>{closeMenu();await fn()}},h('span',{class:'ico '+cls},ico(icon,19)),h('span',{style:'flex:1;min-width:0'},label,sub?h('small',null,sub):null));
+ d.innerHTML='';
+ d.append(h('div',{class:'dh'},h('div',{class:'logo'},ico('bolt',20)),h('div',null,h('b',null,'Inspeksi Gardu'),h('small',null,'PETUGAS LAPANGAN'))),
+  h('div',{class:'dsep'},'Penugasan'),
+  item('c-impor','inbox','Impor penugasan','Dari file Excel kantor',()=>{const f=$('#fcsv');f.value='';f.click()}),
+  item('c-manual','plus','Gardu manual','Gardu di luar penugasan',async()=>addManual()),
+  h('div',{class:'dsep'},'Pengaturan'),
+  item('c-pin','lock','PIN admin','Atur / ubah PIN',ubahPin),
+  item('c-tema',isDark()?'sun':'moon',isDark()?'Tema terang':'Tema gelap','Ganti tampilan',()=>{THEME.set(isDark()?'light':'dark');applyTheme();renderHome()}),
+  h('div',{class:'dfoot'},h('div',null,'Versi aplikasi: '+VERSI),h('div',{style:'margin-top:4px'},'Data tersimpan di HP ini (IndexedDB). Jangan hapus data browser sebelum paket terkirim.')));
+ d.classList.add('on');$('#scrim').classList.add('on')}
+function homeTabs(list){const nK=list.filter(terkirimT).length,nA=list.length-nK,nP=kirimQueue().length;
+ const tb=(cls,icon,label,on,fn,badge)=>h('button',{class:'tb '+cls+(on?' on':''),type:'button','aria-label':label,'aria-current':on?'page':null,onclick:fn},ico(icon,22),label,badge?h('span',{class:'n'},String(badge)):null);
+ return h('nav',{class:'tabbar','aria-label':'Navigasi utama'},
+  tb('c-gardu','list','Gardu ('+nA+')',LF.tab!=='kirim',()=>{LF.tab='aktif';LF.n=PAGE;renderHome()}),
+  tb('c-terkirim','check','Terkirim ('+nK+')',LF.tab==='kirim',()=>{LF.tab='kirim';LF.n=PAGE;renderHome()}),
+  tb('c-kirim','send','Kirim',false,kirimSekarang,nP),
+  tb('c-menu','menu','Menu',false,openMenu))}
+
 /* ================= HOME ================= */
 function latestRec(garduId,form){const l=S.records.filter(r=>r.gardu.id===garduId&&r.form===form);l.sort((a,b)=>b.rev-a.rev||b.created.localeCompare(a.created));return l[0]}
 const LF={q:'',tgl:'',st:'',n:30,tab:'aktif'},PAGE=30;
@@ -297,9 +353,9 @@ function terkirimT(t){if(stCode(t)!=='lengkap')return false;const rs=[latestRec(
 function stCode(t){const ins=latestRec(t.id,'tiang')||latestRec(t.id,'beton'),b=latestRec(t.id,'beban');const iok=ins&&ins.status==='selesai',bok=b&&b.status==='selesai';if(iok&&(t.jenis==='tm'||bok))return'lengkap';return(ins||b)?'proses':'belum'}
 async function renderHome(){await loadState();app.innerHTML='';
  {let ch=false;for(const t of S.tugas){if(t.jenis&&!t.jenisOleh&&!t.manual&&!S.records.some(r=>r.gardu.id===t.id)){t.jenis='';ch=true}}if(ch)await saveTugas()}
- app.append(topBar('Inspeksi Gardu'));
- const m=h('main');
- m.append(h('div',{class:'card'},h('div',{class:'row'},h('button',{class:'btn sec',onclick:()=>{const f=$('#fcsv');f.value='';f.click()}},ico('inbox',17),'Impor penugasan'),h('button',{class:'btn sec',onclick:async()=>{if(await adminOk('tambah gardu manual'))addManual()}},ico('plus',17),'+ Gardu manual')),(()=>{const n=S.records.filter(r=>r.status==='selesai'&&!r.sentAt).length;return h('button',{class:'btn'+(n?'':' sec'),style:'width:100%;margin-top:10px',onclick:()=>{const q=S.records.filter(r=>r.status==='selesai'&&!r.sentAt);if(!q.length)return alert('Belum ada inspeksi selesai yang belum dikirim.');kirim(q)}},ico('send'),'Kirim paket ('+n+')')})()));
+ app.append(topBar('Inspeksi Gardu',null,true));
+ const m=h('main',{class:'hastab'});
+ m.append(h('div',{class:'row',style:'margin-bottom:12px'},h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:()=>{const f=$('#fcsv');f.value='';f.click()}},ico('inbox',17),'Impor penugasan'),h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:async()=>addManual()},ico('plus',17),'+ Gardu manual')));
  // satu daftar gardu: penugasan + gardu yang sudah pernah diinspeksi tapi tidak ada di penugasan; status inspeksi/beban/pengiriman ada di kartu masing-masing
  const known=new Set(S.tugas.map(t=>t.id)),extra=[];for(const r of S.records){if(!known.has(r.gardu.id)){known.add(r.gardu.id);extra.push({...tugasOf(r),_extra:true})}}
  const list=[...S.tugas,...extra];
@@ -307,7 +363,7 @@ async function renderHome(){await loadState();app.innerHTML='';
  if(!list.length){m.append(h('h2',null,'Daftar gardu'),h('div',{class:'card mut'},'Belum ada gardu. Impor file penugasan dari kantor, atau tambah gardu manual.'))}
  else{
   const pending=S.records.filter(r=>r.status==='selesai'&&!r.sentAt);
-  m.append(h('div',{class:'sech'},h('h2',null,'Daftar gardu'),h('span',{class:'badge '+(pending.length?'draft':'ok')},pending.length?pending.length+' belum dikirim':(S.records.some(r=>r.status!=='selesai')?S.records.filter(r=>r.status!=='selesai').length+' draft berjalan':(S.records.length?'Semua terkirim':'Tersimpan di HP')))));
+  m.append(h('div',{class:'sech'},h('h2',null,LF.tab==='kirim'?'Sudah terkirim':'Perlu dikerjakan'),h('span',{class:'badge '+(pending.length?'draft':'ok')},pending.length?pending.length+' belum dikirim':(S.records.some(r=>r.status!=='selesai')?S.records.filter(r=>r.status!=='selesai').length+' draft berjalan':(S.records.length?'Semua terkirim':'Tersimpan di HP')))));
   const garduCard=t=>{const sc=stCode(t),stt=terkirimT(t)?['Terkirim','ok']:sc==='lengkap'?['Selesai','ok']:sc==='proses'?['Proses','draft']:['Belum',''];
    const card=h('div',{class:'card',style:'cursor:pointer',role:'button',tabindex:'0',onclick:()=>bukaGardu(t)});
    card.append(h('div',{class:'row',style:'flex-wrap:nowrap;align-items:flex-start'},h('div',{style:'flex:1;min-width:0'},h('div',{class:'gname'},h('b',null,t.nama)),h('div',{class:'gmeta'},[!t.manual&&t.id,t.pic&&('PIC '+t.pic)].filter(Boolean).join(' · '))),h('span',{class:'badge '+stt[1],style:'flex:0;white-space:nowrap'},stt[0]),
@@ -321,16 +377,13 @@ async function renderHome(){await loadState();app.innerHTML='';
    f.slice(0,LF.n).forEach(t=>box.append(garduCard(t)));
    if(f.length>LF.n)box.append(h('button',{class:'btn sec',style:'width:100%;margin-bottom:12px',onclick:()=>{LF.n+=PAGE;draw()}},`Tampilkan lagi (${f.length-LF.n} sisa)`));
    if(!f.length)box.append(h('div',{class:'card mut'},LF.tab==='kirim'?'Belum ada gardu yang sudah terkirim.':(tot?'Tidak ada gardu yang cocok dengan filter.':'Semua gardu sudah terkirim. Lihat tab Sudah terkirim.')))};
-  {const nK=list.filter(terkirimT).length,tabs=h('div',{class:'row',style:'gap:8px;margin-bottom:10px'});
-   for(const[k,l,n]of[['aktif','Perlu dikerjakan',list.length-nK],['kirim','Sudah terkirim',nK]]){tabs.append(h('button',{class:'btn '+(LF.tab===k?'':'sec'),style:'flex:1;padding:10px 6px','aria-pressed':LF.tab===k?'true':'false',onclick:()=>{LF.tab=k;LF.n=PAGE;renderHome()}},l+' ('+n+')'))}m.append(tabs)}
   if(list.length>5){const fil=h('div',{class:'fil'});
    const cari=h('input',{type:'text',placeholder:'Cari gardu (nama / nomor / penyulang / PIC)…',value:LF.q});cari.addEventListener('input',()=>{LF.q=cari.value;LF.n=PAGE;draw()});fil.append(cari);
    if(dates.length){const st=h('select',null,h('option',{value:''},'Semua tanggal'),dates.map(d=>h('option',{value:d},d)));st.value=LF.tgl;st.addEventListener('change',()=>{LF.tgl=st.value;LF.n=PAGE;draw()});fil.append(st)}
    const ss=h('select',null,[['','Semua status'],['belum','Belum dikerjakan'],['proses','Sedang dikerjakan'],['lengkap','Lengkap']].map(o=>h('option',{value:o[0]},o[1])));ss.value=LF.st;ss.addEventListener('change',()=>{LF.st=ss.value;LF.n=PAGE;draw()});fil.append(ss);
    m.append(fil)}
   m.append(cnt,box);draw()}
- m.append(h('p',{class:'mut',style:'text-align:center;margin-top:20px'},'Data tersimpan di HP ini (IndexedDB). Jangan hapus data browser sebelum paket terkirim.'),h('div',{class:'mut',style:'text-align:center;font-size:11px'},'Versi aplikasi: '+VERSI),h('div',{style:'text-align:center;margin-bottom:16px'},h('button',{class:'btn sec sm',onclick:ubahPin},'Atur / ubah PIN admin')));
- app.append(m)}
+ app.append(m);app.append(homeTabs(list))}
 // kelengkapan: inspeksi + (ukur beban trafo wajib untuk gardu non-TM)
 const tugasOf=rec=>S.tugas.find(x=>x.id===rec.gardu.id)||{id:rec.gardu.id,nama:rec.gardu.nama,lokasi:rec.gardu.lokasi,jenis:rec.gardu.jenis,penyulang:rec.gardu.penyulang,kva:''};
 const bebanOk=id=>{const b=latestRec(id,'beban');return !!(b&&b.status==='selesai')};
