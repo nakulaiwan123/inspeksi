@@ -81,7 +81,7 @@ dialog::backdrop{background:rgba(0,0,0,.62);-webkit-backdrop-filter:blur(4px);ba
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
-const VERSI='12 Okt 2026 · v6c';
+const VERSI='12 Okt 2026 · v6d';
 /* ================= util ================= */
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){const v=attrs[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(k,v===true?'':v);}for(const c of kids.flat(2)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;}
 const ICON={bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',gauge:'<path d="M12 14l4-4"/><path d="M3.3 17a10 10 0 1 1 17.4 0"/>',inbox:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'};
@@ -151,7 +151,7 @@ const dbPut=(s,v,k)=>dbx(s,'readwrite',o=>o.put(v,k));
 const dbGet=(s,k)=>dbx(s,'readonly',o=>o.get(k));
 const dbAll=s=>dbx(s,'readonly',o=>o.getAll());
 const dbDel=(s,k)=>dbx(s,'readwrite',o=>o.delete(k));
-const photosOf=rid=>dbx('photos','readonly',o=>o.index('rid').getAll(rid));
+const photosOf=async rid=>(await dbx('photos','readonly',o=>o.index('rid').getAll(rid))).map(p=>{if(!p.blob&&p.buf)p.blob=new Blob([p.buf],{type:p.type||'image/jpeg'});return p});
 
 /* ================= state ================= */
 const S={tugas:[],records:[],petugas:'',area:'',log:[]};
@@ -240,10 +240,23 @@ let camCtx=null;
 // tombol foto = <label> berisi input file ASLI di atasnya (transparan): user menekan input-nya langsung, tanpa .click() lewat script.
 // Ini cara paling andal di Safari iOS & Chrome HP, termasuk setelah app sempat pindah ke aplikasi lain.
 function photoBtn(txt,gal,mk,sty){const inp=h('input',{type:'file',accept:'image/*'});if(gal)inp.multiple=true;else inp.setAttribute('capture','environment');inp.addEventListener('change',e=>{const c=mk();c.gal=!!gal;onPick(e,c)});return h('label',{class:'btn sec sm pbtn',style:sty||''},txt,inp)}
-async function onPick(e,ctx){const files=[...e.target.files];if(!files.length||!ctx)return;const{rec,ref,label,after,gal}=ctx;let fail=0,last='';
- for(const file of files){try{const g=rec.gps;const lines=[rec.gardu.nama+(rec.gardu.lokasi?' — '+rec.gardu.lokasi:''),(gal?'[GALERI] ':'')+nowTxt()+'  '+(g?`GPS ${g.lat}, ${g.lng} (±${g.acc}m)`:'GPS: -'),(rec.petugas||'')+' | '+label+(gal?' | dari galeri':'')];
-  const blob=await watermark(file,lines);await dbPut('photos',{pid:rec.id+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),rid:rec.id,ref,ts:new Date().toISOString(),blob})}catch(err){fail++;last=err.message}}
- try{e.target.value=''}catch(_){}after&&after();if(fail)alert('Gagal memproses '+fail+' foto: '+last)}
+let PHOTO_BUSY=0;
+// proses foto: watermark -> simpan. Kalau watermark gagal, foto asli tetap disimpan (ditandai wm:false). Kalau simpan Blob gagal (mis. iOS), simpan sebagai ArrayBuffer.
+// Status tampil di kartu foto supaya jelas sedang diproses / berhasil / gagal di tahap mana.
+async function onPick(e,ctx){const files=[...e.target.files];if(!files.length||!ctx)return;const{rec,ref,label,after,gal,note}=ctx;let ok=0,fail=0,last='',nowm=0;PHOTO_BUSY++;
+ const say=t=>{if(note)note.textContent=t};
+ try{for(let i=0;i<files.length;i++){const file=files[i];say('Memproses foto '+(i+1)+'/'+files.length+'…');
+  try{const g=rec.gps;const lines=[rec.gardu.nama+(rec.gardu.lokasi?' — '+rec.gardu.lokasi:''),(gal?'[GALERI] ':'')+nowTxt()+'  '+(g?`GPS ${g.lat}, ${g.lng} (±${g.acc}m)`:'GPS: -'),(rec.petugas||'')+' | '+label+(gal?' | dari galeri':'')];
+   let blob=null,wm=true;try{blob=await watermark(file,lines)}catch(err){blob=null;last='watermark: '+((err&&err.message)||err)}
+   if(!blob||!blob.size){blob=file;wm=false;nowm++}
+   const pid=rec.id+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),ts=new Date().toISOString();
+   try{await dbPut('photos',{pid,rid:rec.id,ref,ts,blob,wm})}catch(err1){const buf=await blob.arrayBuffer();await dbPut('photos',{pid,rid:rec.id,ref,ts,buf,type:blob.type||'image/jpeg',wm})}
+   ok++}catch(err){fail++;last='simpan: '+((err&&err.message)||err)}}}
+ finally{PHOTO_BUSY--}
+ try{e.target.value=''}catch(_){}
+ say(fail?('⚠ '+ok+' foto tersimpan, '+fail+' gagal ('+last+')'):('✔ '+ok+' foto tersimpan'+(nowm?' (tanpa watermark, '+last+')':'')));
+ if(after)try{await after()}catch(_){}
+ if(fail)alert('Gagal menyimpan '+fail+' foto: '+last)}
 async function fillThumbs(box,rec,ref,locked){box.innerHTML='';const ps=(await photosOf(rec.id)).filter(p=>p.ref===ref);for(const p of ps){const u=URL.createObjectURL(p.blob);box.append(h('div',{class:'th'},h('img',{src:u,onclick:()=>window.open(u)}),locked?null:h('button',{class:'x',onclick:async()=>{if(confirm('Hapus foto ini?')){await dbDel('photos',p.pid);fillThumbs(box,rec,ref,locked)}}},'×')))}}
 
 /* ================= navigasi ================= */
@@ -427,7 +440,7 @@ function renderInspeksi(fs,rec,persist,locked){const fd=FORMS[rec.form];
  const ta=(label,key)=>{const t=h('textarea',null,ft[key]||'');t.addEventListener('input',()=>{ft[key]=t.value;persist()});return h('div',null,h('label',{class:'f'},label),t)};
  fs.append(h('h2',null,'Penutup'),h('div',{class:'card'},ta('Catatan hasil inspeksi — tulis manual (temuan dari hasil inspeksi otomatis ditambahkan di bawahnya)','catatan'),optsRow('Health Index',HEALTH,'health'),ta('Catatan lain','catatan_lain'),
   optsRow('KWH pantau terpasang',['Ya','Tidak'],'kwh_pantau'),h('div',{class:'row'},field('Merk KWH / modem',ft.merk_kwh,v=>{ft.merk_kwh=v;persist()}),field('Ratio CT',ft.ratio_ct,v=>{ft.ratio_ct=v;persist()}))));
- const umum=h('div',{class:'card'},h('div',{class:'t'},'Foto — WAJIB (min. '+MIN_FOTO_UMUM+', boleh lebih dari 1)'));const th=h('div',{class:'thumbs'});if(!locked)umum.append(h('div',{class:'row'},photoBtn('📷 Ambil foto',false,()=>({rec,ref:'umum',label:'Foto umum',after:()=>fillThumbs(th,rec,'umum',locked)})),photoBtn('🖼 Pilih dari galeri',true,()=>({rec,ref:'umum',label:'Foto umum',after:()=>fillThumbs(th,rec,'umum',locked)}))));umum.append(th);fillThumbs(th,rec,'umum',locked);fs.append(umum)}
+ const umum=h('div',{class:'card'},h('div',{class:'t'},'Foto — WAJIB (min. '+MIN_FOTO_UMUM+', boleh lebih dari 1)'));const th=h('div',{class:'thumbs'}),pnote=h('div',{class:'mut',style:'margin-top:6px'});if(!locked)umum.append(h('div',{class:'row'},photoBtn('📷 Ambil foto',false,()=>({rec,ref:'umum',label:'Foto umum',note:pnote,after:()=>fillThumbs(th,rec,'umum',locked)})),photoBtn('🖼 Pilih dari galeri',true,()=>({rec,ref:'umum',label:'Foto umum',note:pnote,after:()=>fillThumbs(th,rec,'umum',locked)}))));umum.append(pnote,th);fillThumbs(th,rec,'umum',locked);fs.append(umum)}
 
 /* ---- beban ---- */
 const JR=[['ir','I-R (A)'],['is','I-S (A)'],['it','I-T (A)'],['in','I-N (A)']];
@@ -457,10 +470,10 @@ function renderBeban(fs,rec,persist){const b=rec.beban;fixBeban(b);const res=h('
  const kc=h('div',{class:'card'},h('div',{class:'t'},'Kubikel & jenis gardu'));const kg=h('div',{class:'grid'});for(const[k,l]of KB){const i=h('input',{type:'text',value:b.kubikel[k]||''});i.addEventListener('input',()=>{b.kubikel[k]=i.value;persist()});kg.append(h('div',null,h('label',null,l),i))}kc.append(kg);fs.append(kc);
  const sr=h('textarea',null,b.saran||'');sr.addEventListener('input',()=>{b.saran=sr.value;persist()});
  fs.append(h('h2',null,'Saran-saran & tanda tangan'),h('div',{class:'card'},h('label',{class:'f'},'Saran-saran'),sr,field('Asman Prev',b.ttd.asman,v=>{b.ttd.asman=v;persist()}),field('Pengawas',b.ttd.pengawas,v=>{b.ttd.pengawas=v;persist()}),field('Petugas pelaksana',b.ttd.petugas,v=>{b.ttd.petugas=v;persist()}),h('div',{class:'mut',style:'margin-top:6px'},'Tanggal laporan terisi otomatis saat "Selesai & kunci".')));
- const th=h('div',{class:'thumbs'});fs.append(h('div',{class:'card'},h('div',{class:'t'},'Foto — WAJIB (min. '+MIN_FOTO_UMUM+', boleh lebih dari 1): panel / papan ukur'),rec.status==='selesai'?null:h('div',{class:'row'},photoBtn('📷 Ambil foto',false,()=>({rec,ref:'umum',label:'Pengukuran beban',after:()=>fillThumbs(th,rec,'umum',false)})),photoBtn('🖼 Pilih dari galeri',true,()=>({rec,ref:'umum',label:'Pengukuran beban',after:()=>fillThumbs(th,rec,'umum',false)}))),th));fillThumbs(th,rec,'umum',rec.status==='selesai');upd()}
+ const th=h('div',{class:'thumbs'}),pnote=h('div',{class:'mut',style:'margin-top:6px'});fs.append(h('div',{class:'card'},h('div',{class:'t'},'Foto — WAJIB (min. '+MIN_FOTO_UMUM+', boleh lebih dari 1): panel / papan ukur'),rec.status==='selesai'?null:h('div',{class:'row'},photoBtn('📷 Ambil foto',false,()=>({rec,ref:'umum',label:'Pengukuran beban',note:pnote,after:()=>fillThumbs(th,rec,'umum',false)})),photoBtn('🖼 Pilih dari galeri',true,()=>({rec,ref:'umum',label:'Pengukuran beban',note:pnote,after:()=>fillThumbs(th,rec,'umum',false)}))),pnote,th));fillThumbs(th,rec,'umum',rec.status==='selesai');upd()}
 
 /* ================= selesai & kunci ================= */
-async function selesai(rec){const errs=[];if(!rec.gardu.nama)errs.push('Nama gardu kosong');if(!rec.gardu.lokasi)errs.push('Area belum dipilih');if(!rec.petugas)errs.push('Petugas pelaksana kosong');
+async function selesai(rec){for(let i=0;i<150&&PHOTO_BUSY>0;i++)await new Promise(r=>setTimeout(r,200));const errs=[];if(!rec.gardu.nama)errs.push('Nama gardu kosong');if(!rec.gardu.lokasi)errs.push('Area belum dipilih');if(!rec.petugas)errs.push('Petugas pelaksana kosong');
  if(rec.form==='beban'){const c=calcBeban(rec.beban);if(!rec.beban.jurusan.some(j=>num(j.ir)||num(j.is)||num(j.it)))errs.push('Belum ada data arus jurusan');if(!(c.kva>0))errs.push('Kapasitas trafo belum diisi');rec.beban.hasil={sum_r:c.sum.r,sum_s:c.sum.s,sum_t:c.sum.t,sum_n:c.sum.n,kva_total:c.kva,netral:rec.beban.netral||'',beban_pct:c.pct==null?null:Math.round(c.pct*100)/100}}
  else{const fd=FORMS[rec.form];let un=[];rec.temuan=[];for(const g of fd.groups)for(const it of g.items){if(rec.tm&&g.tmNA)continue;const a=rec.answers[it.n];const v=a?ansV(it,a):'';if(!v){un.push(it.n);continue}if(badOf(it,a))rec.temuan.push({no:it.n,grup:g.g,item:it.t,kondisi:v,nilai:a.nilai||'',catatan:a.note||''})}
   if(un.length)errs.push('Item belum dijawab: #'+un.join(', #'));if(!rec.footer.health)errs.push('Health Index belum dipilih')}
@@ -483,7 +496,7 @@ function makeZip(files){const enc=new TextEncoder(),parts=[],cd=[];let off=0;con
  let cdl=0;for(const c of cd)cdl+=c.length;const e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cdl,true);e.setUint32(16,off,true);
  return new Blob([...parts,...cd,new Uint8Array(e.buffer)],{type:'application/zip'})}
 async function buildPackage(recs){const enc=new TextEncoder(),files=[],man={format:'inspeksi-gardu-paket',versi:1,dibuat:new Date().toISOString(),setor:new Date().toISOString(),daftar:S.tugas.map(t=>t.id),log:S.log.slice(-200),petugas:[...new Set(recs.map(r=>r.petugas).filter(Boolean))].join('; '),items:[]};
- for(const r of recs){const pm=[];for(const p of await photosOf(r.id)){const u8=new Uint8Array(await p.blob.arrayBuffer());const fn=`foto/${r.id}/${p.pid}.jpg`;files.push({name:fn,data:u8});pm.push({pid:p.pid,ref:p.ref,file:fn,crc:crc32(u8),ts:p.ts})}
+ for(const r of recs){const pm=[];for(const p of await photosOf(r.id)){const u8=new Uint8Array(await p.blob.arrayBuffer());const fn=`foto/${r.id}/${p.pid}.jpg`;files.push({name:fn,data:u8});pm.push({pid:p.pid,ref:p.ref,file:fn,crc:crc32(u8),ts:p.ts,wm:p.wm!==false})}
   const jd=enc.encode(JSON.stringify({...r,foto:pm,skema:FORMS[r.form]},null,1));const jn=`data/${r.id}.json`;files.push({name:jn,data:jd});man.items.push({id:r.id,gardu:r.gardu.nama,form:r.form,rev:r.rev,tanggal:r.tanggal,data:jn,crc:crc32(jd),jumlah_foto:pm.length})}
  files.unshift({name:'manifest.json',data:enc.encode(JSON.stringify(man,null,1))});return makeZip(files)}
 async function kirim(recs){try{
