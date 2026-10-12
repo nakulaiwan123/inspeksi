@@ -76,7 +76,7 @@ dialog::backdrop{background:rgba(0,0,0,.62);-webkit-backdrop-filter:blur(4px);ba
 </head>
 <body>
 <div id="app"></div>
-<input type="file" id="fcsv" accept=".csv,.txt,.xlsx,text/csv" hidden>
+<input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <input type="file" id="fcam" accept="image/*" capture="environment" hidden>
 <script>
 'use strict';
@@ -278,7 +278,7 @@ function stCode(t){const ins=latestRec(t.id,'tiang')||latestRec(t.id,'beton'),b=
 async function renderHome(){await loadState();app.innerHTML='';
  app.append(topBar('Inspeksi Gardu'));
  const m=h('main');
- m.append(h('div',{class:'card'},h('div',{class:'row'},h('button',{class:'btn sec',onclick:async()=>{if(await adminOk('impor penugasan')){const f=$('#fcsv');f.value='';f.click()}}},ico('inbox',17),'Impor penugasan'),h('button',{class:'btn sec',onclick:async()=>{if(await adminOk('tambah gardu manual'))addManual()}},ico('plus',17),'+ Gardu manual')),(()=>{const n=S.records.filter(r=>r.status==='selesai'&&!r.sentAt).length;return h('button',{class:'btn'+(n?'':' sec'),style:'width:100%;margin-top:10px',onclick:()=>{const q=S.records.filter(r=>r.status==='selesai'&&!r.sentAt);if(!q.length)return alert('Belum ada inspeksi selesai yang belum dikirim.');kirim(q)}},ico('send'),'Kirim paket ('+n+')')})()));
+ m.append(h('div',{class:'card'},h('div',{class:'row'},h('button',{class:'btn sec',onclick:()=>{const f=$('#fcsv');f.value='';f.click()}},ico('inbox',17),'Impor penugasan'),h('button',{class:'btn sec',onclick:async()=>{if(await adminOk('tambah gardu manual'))addManual()}},ico('plus',17),'+ Gardu manual')),(()=>{const n=S.records.filter(r=>r.status==='selesai'&&!r.sentAt).length;return h('button',{class:'btn'+(n?'':' sec'),style:'width:100%;margin-top:10px',onclick:()=>{const q=S.records.filter(r=>r.status==='selesai'&&!r.sentAt);if(!q.length)return alert('Belum ada inspeksi selesai yang belum dikirim.');kirim(q)}},ico('send'),'Kirim paket ('+n+')')})()));
  // satu daftar gardu: penugasan + gardu yang sudah pernah diinspeksi tapi tidak ada di penugasan; status inspeksi/beban/pengiriman ada di kartu masing-masing
  const known=new Set(S.tugas.map(t=>t.id)),extra=[];for(const r of S.records){if(!known.has(r.gardu.id)){known.add(r.gardu.id);extra.push({...tugasOf(r),_extra:true})}}
  const list=[...S.tugas,...extra];
@@ -328,7 +328,7 @@ function kunciOf(rows){const hi=rows.findIndex((r,i)=>i<25&&r.map(normKey).inclu
 async function terapkanTugas(list,kunci){const by=new Map(S.tugas.map(t=>[t.id,t]));let baru=0;for(const t of list){if(by.has(t.id)){Object.assign(by.get(t.id),{...t,jenis:t.jenis||by.get(t.id).jenis,lokasi:t.lokasi||by.get(t.id).lokasi})}else{S.tugas.push(t);baru++}}
  let pinInfo='';if(kunci){const ada=await dbGet('meta','pinhash');if(!ada||Date.now()<adminUntil){await dbPut('meta',kunci,'pinhash');pinInfo=ada?'\nPIN admin diperbarui dari file.':'\nPIN admin dari kantor sudah dipasang.'}}
  await saveTugas();alert(`Terbaca ${list.length} gardu (${baru} baru).`+pinInfo);renderHome()}
-$('#fcsv').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const rows=/\.xlsx$/i.test(f.name)?await xlsxRows(await f.arrayBuffer()):parseCSV(await f.text());await terapkanTugas(rowsToTugas(rows),kunciOf(rows))}catch(err){alert('Gagal impor file penugasan: '+err.message)}});
+$('#fcsv').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;if(!(await adminOk('impor penugasan'))){e.target.value='';return}try{const rows=/\.xlsx$/i.test(f.name)?await xlsxRows(await f.arrayBuffer()):parseCSV(await f.text());await terapkanTugas(rowsToTugas(rows),kunciOf(rows))}catch(err){alert('Gagal impor file penugasan: '+err.message)}});
 async function addManual(){const o=await dlg('Tambah gardu',[{key:'nama',label:'Nama gardu'},{key:'lokasi',label:'Area',opts:[['','— pilih —'],...AREAS.map(a=>[a,a])]},{key:'jenis',label:'Jenis gardu',opts:JENIS_OPTS}]);if(!o||!o.nama)return;const nt={id:slug(o.nama)+'-'+Date.now().toString(36).slice(-4),nama:o.nama,lokasi:o.lokasi,jenis:o.jenis,penyulang:'',kva:'',manual:true};S.tugas.push(nt);await catat('tambah',nt);await saveTugas();renderHome()}
 async function openGardu(t,fm){let form=fm==='inspeksi'?formOf(t.jenis):'beban';if(fm==='inspeksi'&&!form){const o=await dlg('Jenis gardu '+t.nama,[{key:'jenis',label:'Jenis gardu',opts:JENIS_OPTS}]);if(!o||!o.jenis)return;t.jenis=o.jenis;form=formOf(o.jenis);await saveTugas()}
  let r=latestRec(t.id,form);if(r){return renderForm(r)}
