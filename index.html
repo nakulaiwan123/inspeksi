@@ -81,7 +81,7 @@ dialog::backdrop{background:rgba(0,0,0,.62);-webkit-backdrop-filter:blur(4px);ba
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
-const VERSI='12 Okt 2026 · v4';
+const VERSI='12 Okt 2026 · v6';
 /* ================= util ================= */
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){const v=attrs[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(k,v===true?'':v);}for(const c of kids.flat(2)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;}
 const ICON={bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',gauge:'<path d="M12 14l4-4"/><path d="M3.3 17a10 10 0 1 1 17.4 0"/>',inbox:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'};
@@ -202,7 +202,7 @@ function csvNoHeader(rows){const w=Math.max(...rows.map(r=>r.length));const isId
  const cLama=cId>0?cId-1:-1,cNama=cId+1;if(cNama>=w)throw new Error('Kolom lokasi/nama gardu tidak ada setelah kolom nomor gardu baru');
  const nums=[];for(let c=cNama+1;c<w;c++)nums.push(c);const cPel=nums.length>=2?nums[0]:-1,cKva=nums.length>=2?nums[1]:(nums.length?nums[0]:-1);
  const out=[];for(const r of rows){const g=i=>i>=0?String(r[i]||'').trim():'';if(!isId(g(cId)))continue;const nama=g(cNama);if(!nama)continue;const kv=parseFloat(g(cKva).replace(',','.'));
-  out.push({id:g(cId),nama,lokasi:'',jenis:jenisTm('',cKva>=0&&!(kv>0)),penyulang:'',kva:kv>0?String(kv):'',lama:g(cLama),pelanggan:g(cPel)})}
+  out.push({id:g(cId),nama,lokasi:'',jenis:'',penyulang:'',kva:kv>0?String(kv):'',lama:g(cLama),pelanggan:g(cPel)})}
  if(!out.length)throw new Error('Tidak ada baris gardu terbaca');return out}
 function csvToTugas(txt){return rowsToTugas(parseCSV(txt))}
 function rowsToTugas(rows){if(rows.length<1)throw new Error('CSV kosong');
@@ -226,7 +226,8 @@ function rowsToTugas(rows){if(rows.length<1)throw new Error('CSV kosong');
   const nama=g(cNama)||g(cId);if(!nama)continue;
   const kv=parseFloat(g(cKva).replace(',','.'));
   if(cSt>=0&&/tidak ada|bongkar|hapus|non.?aktif/i.test(g(cSt)))continue;
-  const idp=g(cIdp);out.push({id:g(cId)||slug(nama),nama,lokasi:areaNorm(g(cLok)),jenis:idp?'tm':jenisTm(normJenis(g(cJen)),cKva>=0&&!(kv>0)),idpel:idp,rencana:g(cRen),selesai:g(cSel),pic:g(cPic),ket:g(cKet),penyulang:g(cPeny)||peny,kva:kv>0?String(kv):'',lama:g(cLama),pelanggan:g(cPel)})}
+  // Jenis gardu TIDAK dibaca dari file: selalu ditentukan petugas di HP saat gardu diketuk. ID PEL hanya disimpan sebagai pilihan awal (TM) di dialog jenis.
+  const idp=/\d/.test(g(cIdp))?g(cIdp):'';out.push({id:g(cId)||slug(nama),nama,lokasi:areaNorm(g(cLok)),jenis:'',idpel:idp,rencana:g(cRen),selesai:g(cSel),pic:g(cPic),ket:g(cKet),penyulang:g(cPeny)||peny,kva:kv>0?String(kv):'',lama:g(cLama),pelanggan:g(cPel)})}
  if(!out.length)throw new Error('Tidak ada baris gardu terbaca (cek kolom Nomor Gardu Baru terisi)');
  return out}
 
@@ -249,7 +250,7 @@ async function fillThumbs(box,rec,ref,locked){box.innerHTML='';const ps=(await p
 const app=$('#app');
 function topBar(title,back){const tb=h('button',{class:'ibtn',title:'Ganti tema terang/gelap','aria-label':'Ganti tema',onclick:()=>{THEME.set(isDark()?'light':'dark');applyTheme();tb.textContent='';tb.append(ico(isDark()?'moon':'sun',18))}},ico(isDark()?'moon':'sun',18));
  return h('header',{class:'top'},back?h('button',{onclick:back},'‹ Kembali'):h('div',{class:'logo'},ico('bolt',20)),h('h1',null,title),tb)}
-function dlg(title,fields){return new Promise(res=>{const d=h('dialog');const inputs={};const f=h('form',{method:'dialog'},h('h3',null,title));for(const fl of fields){f.append(h('label',{class:'f'},fl.label));const i=fl.opts?h('select',null,fl.opts.map(o=>h('option',{value:o[0]},o[1]))):h('input',fl.pw?{type:'password',inputmode:'numeric',autocomplete:'off',maxlength:'6',value:''}:{type:'text',value:fl.value||''});inputs[fl.key]=i;f.append(i)}
+function dlg(title,fields){return new Promise(res=>{const d=h('dialog');const inputs={};const f=h('form',{method:'dialog'},h('h3',null,title));for(const fl of fields){f.append(h('label',{class:'f'},fl.label));const i=fl.opts?h('select',null,fl.opts.map(o=>h('option',{value:o[0]},o[1]))):h('input',fl.pw?{type:'password',inputmode:'numeric',autocomplete:'off',maxlength:'6',value:''}:{type:'text',value:fl.value||''});if(fl.opts&&fl.value)i.value=fl.value;inputs[fl.key]=i;f.append(i)}
  f.append(h('div',{class:'row',style:'margin-top:12px'},h('button',{class:'btn sec',value:'x',type:'submit'},'Batal'),h('button',{class:'btn',value:'ok',type:'submit'},'OK')));d.append(f);document.body.append(d);d.addEventListener('close',()=>{const ok=d.returnValue==='ok';const o={};for(const k in inputs)o[k]=inputs[k].value.trim();d.remove();res(ok?o:null)});d.showModal()})}
 /* ===== PIN admin: impor penugasan, tambah gardu manual, hapus gardu ===== */
 let adminUntil=0,pinFail=0,pinLock=0;
@@ -282,6 +283,7 @@ const LF={q:'',tgl:'',st:'',n:30,tab:'aktif'},PAGE=30;
 function terkirimT(t){if(stCode(t)!=='lengkap')return false;const rs=[latestRec(t.id,'tiang')||latestRec(t.id,'beton')];if(t.jenis!=='tm')rs.push(latestRec(t.id,'beban'));return rs.every(r=>r&&r.sentAt)}
 function stCode(t){const ins=latestRec(t.id,'tiang')||latestRec(t.id,'beton'),b=latestRec(t.id,'beban');const iok=ins&&ins.status==='selesai',bok=b&&b.status==='selesai';if(iok&&(t.jenis==='tm'||bok))return'lengkap';return(ins||b)?'proses':'belum'}
 async function renderHome(){await loadState();app.innerHTML='';
+ {let ch=false;for(const t of S.tugas){if(t.jenis&&!t.jenisOleh&&!t.manual&&!S.records.some(r=>r.gardu.id===t.id)){t.jenis='';ch=true}}if(ch)await saveTugas()}
  app.append(topBar('Inspeksi Gardu'));
  const m=h('main');
  m.append(h('div',{class:'card'},h('div',{class:'row'},h('button',{class:'btn sec',onclick:()=>{const f=$('#fcsv');f.value='';f.click()}},ico('inbox',17),'Impor penugasan'),h('button',{class:'btn sec',onclick:async()=>{if(await adminOk('tambah gardu manual'))addManual()}},ico('plus',17),'+ Gardu manual')),(()=>{const n=S.records.filter(r=>r.status==='selesai'&&!r.sentAt).length;return h('button',{class:'btn'+(n?'':' sec'),style:'width:100%;margin-top:10px',onclick:()=>{const q=S.records.filter(r=>r.status==='selesai'&&!r.sentAt);if(!q.length)return alert('Belum ada inspeksi selesai yang belum dikirim.');kirim(q)}},ico('send'),'Kirim paket ('+n+')')})()));
@@ -293,20 +295,11 @@ async function renderHome(){await loadState();app.innerHTML='';
  else{
   const pending=S.records.filter(r=>r.status==='selesai'&&!r.sentAt);
   m.append(h('div',{class:'sech'},h('h2',null,'Daftar gardu'),h('span',{class:'badge '+(pending.length?'draft':'ok')},pending.length?pending.length+' belum dikirim':(S.records.some(r=>r.status!=='selesai')?S.records.filter(r=>r.status!=='selesai').length+' draft berjalan':(S.records.length?'Semua terkirim':'Tersimpan di HP')))));
-  const garduCard=t=>{const card=h('div',{class:'card'});
-   card.append(h('div',{class:'row',style:'flex-wrap:nowrap;align-items:flex-start'},h('div',{style:'flex:1;min-width:0'},h('div',{class:'gname'},h('b',null,t.nama)),h('div',{class:'gmeta'},[!t.manual&&t.id,t.lokasi,t.kva&&(t.kva+' kVA'),t.penyulang&&('Peny. '+t.penyulang),t.rencana&&('Rencana '+t.rencana),t.pic&&('PIC '+t.pic)].filter(Boolean).join(' · '))),h('span',{class:'badge',style:'flex:0;white-space:nowrap'},JENIS_LBL[t.jenis]||'Jenis ?'),
-    t._extra?null:h('button',{class:'btn sec sm',style:'flex:0',title:'Hapus dari daftar penugasan','aria-label':'Hapus dari daftar penugasan',onclick:async()=>{if(!(await adminOk('hapus gardu dari penugasan')))return;if(confirm('Hapus dari daftar penugasan? (data inspeksi tetap tersimpan)')){await catat('hapus',t);S.tugas=S.tugas.filter(x=>x!==t);await saveTugas();renderHome()}}},ico('trash',15))));
-   for(const fm of['inspeksi','beban']){if(fm==='beban'&&t.jenis==='tm')continue;
-    const r=fm==='inspeksi'?(t.jenis&&formOf(t.jenis)?latestRec(t.id,formOf(t.jenis)):(latestRec(t.id,'tiang')||latestRec(t.id,'beton'))):latestRec(t.id,'beban');
-    const lbl=fm==='inspeksi'?'Inspeksi':'Ukur Beban';const done=r&&r.status==='selesai';
-    const stt=!r?['Belum',''] :!done?['Draft','draft']:r.sentAt?['Terkirim','ok']:['Selesai, belum dikirim','ok'];
-    const row=h('div',{class:'row',style:'margin-top:8px;flex-wrap:wrap;align-items:center'},
-     h('button',{class:'btn '+(done?'sec':''),style:'flex:1 1 150px',onclick:()=>r?renderForm(r):openGardu(t,fm)},ico(fm==='inspeksi'?'clip':'gauge',17),lbl+': '+(!r?'Mulai':done?'Lihat':'Lanjutkan')),
-     h('span',{class:'badge '+stt[1],style:'flex:0;white-space:nowrap'},stt[0]));
-    if(done)row.append(h('button',{class:'btn sec sm',style:'flex:0;white-space:nowrap',onclick:()=>kirim([r])},ico('refresh',14),r.sentAt?'Kirim ulang':'Kirim'));
-    else if(r)row.append(h('button',{class:'btn sec sm',style:'flex:0',onclick:async()=>{if(confirm('Hapus draft ini beserta fotonya?')){await catat('hapus-draft',{id:r.gardu.id,nama:r.gardu.nama});for(const p of await photosOf(r.id))await dbDel('photos',p.pid);await dbDel('records',r.id);renderHome()}}},'Hapus'));
-    card.append(row)}
-   card.append(statusLine(t));return card};
+  const garduCard=t=>{const sc=stCode(t),stt=terkirimT(t)?['Terkirim','ok']:sc==='lengkap'?['Selesai','ok']:sc==='proses'?['Proses','draft']:['Belum',''];
+   const card=h('div',{class:'card',style:'cursor:pointer',role:'button',tabindex:'0',onclick:()=>bukaGardu(t)});
+   card.append(h('div',{class:'row',style:'flex-wrap:nowrap;align-items:flex-start'},h('div',{style:'flex:1;min-width:0'},h('div',{class:'gname'},h('b',null,t.nama)),h('div',{class:'gmeta'},[!t.manual&&t.id,t.pic&&('PIC '+t.pic)].filter(Boolean).join(' · '))),h('span',{class:'badge '+stt[1],style:'flex:0;white-space:nowrap'},stt[0]),
+    t._extra?null:h('button',{type:'button',class:'btn sec sm',style:'flex:0',title:'Hapus dari daftar penugasan','aria-label':'Hapus dari daftar penugasan',onclick:async ev=>{ev.stopPropagation();if(!(await adminOk('hapus gardu dari penugasan')))return;if(confirm('Hapus dari daftar penugasan? (data inspeksi tetap tersimpan)')){await catat('hapus',t);S.tugas=S.tugas.filter(x=>x!==t);await saveTugas();renderHome()}}},ico('trash',15))));
+   return card};
   // filter + tampil bertahap (daftar bisa ribuan gardu)
   const dates=[...new Set(list.map(t=>t.rencana).filter(Boolean))].sort();
   const box=h('div'),cnt=h('div',{class:'mut',style:'margin:0 2px 8px'});
@@ -328,19 +321,52 @@ async function renderHome(){await loadState();app.innerHTML='';
 // kelengkapan: inspeksi + (ukur beban trafo wajib untuk gardu non-TM)
 const tugasOf=rec=>S.tugas.find(x=>x.id===rec.gardu.id)||{id:rec.gardu.id,nama:rec.gardu.nama,lokasi:rec.gardu.lokasi,jenis:rec.gardu.jenis,penyulang:rec.gardu.penyulang,kva:''};
 const bebanOk=id=>{const b=latestRec(id,'beban');return !!(b&&b.status==='selesai')};
-function statusLine(t){const ins=latestRec(t.id,'tiang')||latestRec(t.id,'beton');const miss=[];if(!(ins&&ins.status==='selesai'))miss.push('inspeksi');if(t.jenis!=='tm'&&!bebanOk(t.id))miss.push('ukur beban trafo');
+function statusLine(t){const ins=latestRec(t.id,'tiang')||latestRec(t.id,'beton');const miss=[];if(!(ins&&ins.status==='selesai'))miss.push('inspeksi');if(!t.jenis)miss.push('penentuan jenis gardu (TM / tiang / beton)');else if(t.jenis!=='tm'&&!bebanOk(t.id))miss.push('ukur beban trafo');
  return miss.length?h('div',{class:'mut',style:'margin-top:6px'},'Belum lengkap: '+miss.join(' + ')):h('div',{style:'margin-top:6px'},h('span',{class:'badge ok'},'Lengkap'))}
 function kunciOf(rows){const hi=rows.findIndex((r,i)=>i<25&&r.map(normKey).includes('kunci'));if(hi<0)return'';const c=rows[hi].map(normKey).indexOf('kunci');for(let i=hi+1;i<Math.min(rows.length,hi+6);i++){const v=String(rows[i][c]||'').trim();if(/^[0-9a-f]{64}$/.test(v))return v}return''}
 async function terapkanTugas(list,kunci){const by=new Map(S.tugas.map(t=>[t.id,t]));let baru=0;for(const t of list){if(by.has(t.id)){Object.assign(by.get(t.id),{...t,jenis:t.jenis||by.get(t.id).jenis,lokasi:t.lokasi||by.get(t.id).lokasi})}else{S.tugas.push(t);baru++}}
  let pinInfo='';if(kunci){const ada=await dbGet('meta','pinhash');if(!ada||Date.now()<adminUntil){await dbPut('meta',kunci,'pinhash');pinInfo=ada?'\nPIN admin diperbarui dari file.':'\nPIN admin dari kantor sudah dipasang.'}}
- await saveTugas();alert(`Terbaca ${list.length} gardu (${baru} baru).`+pinInfo);renderHome()}
+ await saveTugas();
+ alert(`Terbaca ${list.length} gardu (${baru} baru).\nJenis gardu (tiang / beton / TM) ditentukan petugas saat gardu diketuk di HP.`+pinInfo);renderHome()}
 $('#fcsv').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;if(!(await adminOk('impor penugasan'))){e.target.value='';return}try{const rows=/\.xlsx$/i.test(f.name)?await xlsxRows(await f.arrayBuffer()):parseCSV(await f.text());await terapkanTugas(rowsToTugas(rows),kunciOf(rows))}catch(err){alert('Gagal impor file penugasan: '+err.message)}});
 async function addManual(){const o=await dlg('Tambah gardu',[{key:'nama',label:'Nama gardu'},{key:'lokasi',label:'Area',opts:[['','— pilih —'],...AREAS.map(a=>[a,a])]},{key:'jenis',label:'Jenis gardu',opts:JENIS_OPTS}]);if(!o||!o.nama)return;const nt={id:slug(o.nama)+'-'+Date.now().toString(36).slice(-4),nama:o.nama,lokasi:o.lokasi,jenis:o.jenis,penyulang:'',kva:'',manual:true};S.tugas.push(nt);await catat('tambah',nt);await saveTugas();renderHome()}
-async function openGardu(t,fm){let form=fm==='inspeksi'?formOf(t.jenis):'beban';if(fm==='inspeksi'&&!form){const o=await dlg('Jenis gardu '+t.nama,[{key:'jenis',label:'Jenis gardu',opts:JENIS_OPTS}]);if(!o||!o.jenis)return;t.jenis=o.jenis;form=formOf(o.jenis);await saveTugas()}
+// jenis gardu ditentukan petugas di HP (satu-satunya sumber). Setiap penentuan dicatat di log (ikut paket) supaya admin bisa mencocokkan dengan screenshot penugasan.
+async function pilihJenis(t,why){const o=await dlg('Ini gardu apa? '+t.nama+(why?' — '+why:''),[{key:'jenis',label:'Jenis gardu',opts:JENIS_OPTS,value:t.jenis||(t.idpel?'tm':'')}]);if(!o||!o.jenis)return false;
+ t.jenis=o.jenis;t.jenisOleh='petugas';await catat('set-jenis:'+o.jenis,t);if(!t._extra)await saveTugas();return true}
+async function ubahJenis(t,cb){cb=cb||renderHome;
+ if(!t.jenis){if(await pilihJenis(t,''))cb();return}
+ if(t._extra||S.records.some(r=>r.gardu.id===t.id)){alert('Jenis gardu tidak bisa diubah karena sudah ada data inspeksi / ukur beban untuk gardu ini. Hapus draft-nya dulu, atau buat revisi.');return}
+ if(!(await adminOk('ubah jenis gardu')))return;
+ if(await pilihJenis(t,'ubah jenis'))cb()}
+// ketuk gardu di daftar: kalau jenis belum ada, tanya dulu "ini gardu apa?", lalu buka halaman gardu
+async function bukaGardu(t){if(!t.jenis&&!(await pilihJenis(t,'')))return;renderGardu(t.id)}
+async function renderGardu(id){await loadState();app.innerHTML='';
+ let t=S.tugas.find(x=>x.id===id);if(!t){const r0=S.records.find(x=>x.gardu.id===id);if(!r0)return renderHome();t={...tugasOf(r0),_extra:true}}
+ if(!t.jenis){const ins0=latestRec(id,'tiang')||latestRec(id,'beton');if(ins0)t.jenis=ins0.tm?'tm':ins0.form}
+ app.append(topBar(t.nama,renderHome));const m=h('main');const card=h('div',{class:'card'});
+ card.append(h('div',{class:'row',style:'flex-wrap:nowrap;align-items:flex-start'},h('div',{style:'flex:1;min-width:0'},h('div',{class:'gname'},h('b',null,t.nama)),h('div',{class:'gmeta'},[!t.manual&&t.id,t.lokasi,t.penyulang&&('Peny. '+t.penyulang),t.rencana&&('Rencana '+t.rencana),t.pic&&('PIC '+t.pic)].filter(Boolean).join(' · '))),
+  h('button',{type:'button',class:'badge'+(t.jenis?'':' draft'),style:'flex:0;white-space:nowrap;cursor:pointer',title:t.jenis?'Ubah jenis gardu (PIN admin)':'Tentukan jenis gardu','aria-label':'Jenis gardu',onclick:()=>ubahJenis(t,()=>renderGardu(id))},JENIS_LBL[t.jenis]||'Jenis ? (ketuk)')));
+ for(const fm of['inspeksi','beban']){if(fm==='beban'&&t.jenis==='tm')continue;
+  if(fm==='beban'&&!t.jenis&&!latestRec(t.id,'beban')){card.append(h('div',{class:'mut',style:'margin-top:8px'},'Ukur Beban: tentukan jenis gardu dulu (ketuk badge jenis di atas).'));continue}
+  const r=fm==='inspeksi'?(t.jenis&&formOf(t.jenis)?latestRec(t.id,formOf(t.jenis)):(latestRec(t.id,'tiang')||latestRec(t.id,'beton'))):latestRec(t.id,'beban');
+  const lbl=fm==='inspeksi'?'Inspeksi':'Ukur Beban';const done=r&&r.status==='selesai';
+  const stt=!r?['Belum',''] :!done?['Draft','draft']:r.sentAt?['Terkirim','ok']:['Selesai, belum dikirim','ok'];
+  const row=h('div',{class:'row',style:'margin-top:8px;flex-wrap:wrap;align-items:center'},
+   h('button',{class:'btn '+(done?'sec':''),style:'flex:1 1 150px',onclick:()=>r?renderForm(r):openGardu(t,fm)},ico(fm==='inspeksi'?'clip':'gauge',17),lbl+': '+(!r?'Mulai':done?'Lihat':'Lanjutkan')),
+   h('span',{class:'badge '+stt[1],style:'flex:0;white-space:nowrap'},stt[0]));
+  if(done)row.append(h('button',{class:'btn sec sm',style:'flex:0;white-space:nowrap',onclick:()=>kirim([r])},ico('refresh',14),r.sentAt?'Kirim ulang':'Kirim'));
+  else if(r)row.append(h('button',{class:'btn sec sm',style:'flex:0',onclick:async()=>{if(confirm('Hapus draft ini beserta fotonya?')){await catat('hapus-draft',{id:r.gardu.id,nama:r.gardu.nama});for(const p of await photosOf(r.id))await dbDel('photos',p.pid);await dbDel('records',r.id);renderGardu(id)}}},'Hapus'));
+  card.append(row)}
+ if(t.jenis==='tm')card.append(h('div',{class:'mut',style:'margin-top:8px'},'Gardu pelanggan TM: tidak perlu ukur beban trafo.'));
+ card.append(statusLine(t));m.append(card);app.append(m)}
+async function openGardu(t,fm){
+ if(!t.jenis){if(!(await pilihJenis(t,fm==='beban'?'tentukan dulu sebelum ukur beban':'')))return}
+ if(fm==='beban'&&t.jenis==='tm'){alert('Gardu pelanggan TM tidak memerlukan pengukuran beban trafo.');return renderHome()}
+ const form=fm==='inspeksi'?formOf(t.jenis):'beban';
  let r=latestRec(t.id,form);if(r){return renderForm(r)}
  r=newRec(t,form);await saveRec(r);S.records.push(r);renderForm(r)}
 function newRec(t,form,rev=1,grp){const fd=FORMS[form];const id=slug(t.id)+'-'+form+'-'+today().replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,6);
- const r={id,grup:grp||id,rev,form,no_dokumen:fd.no,revisi_form:fd.rev,gardu:{id:t.id,nama:t.nama,lokasi:t.lokasi||S.area||'',jenis:t.jenis||'',penyulang:t.penyulang||'',lama:t.lama||'',pelanggan:t.pelanggan||'',manual:!!t.manual},tanggal:today(),petugas:petOf(t),status:'draft',tm:false,gps:null,answers:{},footer:{},temuan:[],created:new Date().toISOString(),updated:new Date().toISOString(),device:navigator.userAgent.slice(0,120)};
+ const r={id,grup:grp||id,rev,form,no_dokumen:fd.no,revisi_form:fd.rev,gardu:{id:t.id,nama:t.nama,lokasi:t.lokasi||S.area||'',jenis:t.jenis||'',penyulang:t.penyulang||'',lama:t.lama||'',pelanggan:t.pelanggan||'',manual:!!t.manual,jenis_oleh:t.jenisOleh||t.jenis_oleh||''},tanggal:today(),petugas:petOf(t),status:'draft',tm:false,gps:null,answers:{},footer:{},temuan:[],created:new Date().toISOString(),updated:new Date().toISOString(),device:navigator.userAgent.slice(0,120)};
  if(form==='beban')r.beban={jurusan:[{}],tegangan:{},netral:'',trafo:[{kapasitas:t.kva||''},{}],kubikel:{jenis_gardu:t.jenis||''},ukur:{waktu:'',pukul:''},tgl_laporan:'',saran:'',ttd:{asman:'',pengawas:'',petugas:petOf(t)}};
 
  if(form==='beton'&&t.jenis==='tm')setTm(r,true);
@@ -353,7 +379,7 @@ function sel(label,val,opts,onin){const s=h('select',null,opts.map(o=>h('option'
 function field(label,val,onin,type='text',ph=''){const i=h('input',{type,value:val==null?'':val,placeholder:ph});i.addEventListener('input',()=>onin(i.value));return h('div',null,h('label',{class:'f'},label),i)}
 async function renderForm(rec){app.innerHTML='';const locked=rec.status==='selesai';const fd=FORMS[rec.form];
  const persist=()=>debounce(()=>saveRec(rec));
- app.append(topBar(fd.judul,()=>{saveRec(rec).then(renderHome)}));
+ app.append(topBar(fd.judul,()=>{saveRec(rec).then(()=>renderGardu(rec.gardu.id))}));
  const m=h('main');
  if(locked)m.append(h('div',{class:'warn',style:'margin-bottom:12px'},'Inspeksi sudah selesai & terkunci. Untuk koreksi, buat revisi (versi baru).',h('div',{style:'margin-top:6px'},h('button',{class:'btn sm',onclick:async()=>{const n=newRec({...rec.gardu},rec.form,rec.rev+1,rec.grup);n.answers=JSON.parse(JSON.stringify(rec.answers));n.footer=JSON.parse(JSON.stringify(rec.footer));if(rec.beban)n.beban=JSON.parse(JSON.stringify(rec.beban));n.catatan_revisi='Revisi dari '+rec.id;await saveRec(n);S.records.push(n);renderForm(n)}},'Buat revisi'))));
  const fs=h('fieldset',{disabled:locked});
@@ -368,7 +394,7 @@ async function renderForm(rec){app.innerHTML='';const locked=rec.status==='seles
  if(!rec.gps&&!locked)doGps();
  if(rec.form==='beban')renderBeban(fs,rec,persist);else renderInspeksi(fs,rec,persist,locked);
  m.append(fs);app.append(m);
- if(!locked)app.append(h('div',{class:'bar'},h('button',{class:'btn sec',onclick:async()=>{await saveRec(rec);renderHome()}},'Simpan & keluar'),h('button',{class:'btn',onclick:()=>selesai(rec)},'Selesai & kunci')));
+ if(!locked)app.append(h('div',{class:'bar'},h('button',{class:'btn sec',onclick:async()=>{await saveRec(rec);renderGardu(rec.gardu.id)}},'Simpan & keluar'),h('button',{class:'btn',onclick:()=>selesai(rec)},'Selesai & kunci')));
  else app.append(h('div',{class:'bar'},h('button',{class:'btn',onclick:()=>kirim([rec])},'Kirim paket')))}
 
 function tmToggle(rec,locked){if(rec.form!=='beton')return null;if(locked)return rec.tm?h('div',{class:'mut'},'Gardu pelanggan TM — trafo & panel TR tidak berlaku'):null;
@@ -446,7 +472,7 @@ async function selesai(rec){const errs=[];if(!rec.gardu.nama)errs.push('Nama gar
  if(rec.form==='beban'){const u=rec.beban.ukur;if(!u.pukul)u.pukul=rec.jam;if(!u.waktu)u.waktu=(dn.getHours()>=6&&dn.getHours()<18)?'Siang':'Malam';rec.beban.tgl_laporan=today()}
  rec.status='selesai';rec.selesaiAt=dn.toISOString();await saveRec(rec);
  if(rec.form!=='beban'&&!rec.tm&&!bebanOk(rec.gardu.id)&&confirm('Inspeksi tersimpan.\nUkur beban trafo WAJIB diisi untuk gardu non-TM dan belum ada. Isi sekarang?'))return openGardu(tugasOf(rec),'beban')
- renderHome()}
+ renderGardu(rec.gardu.id)}
 
 /* ================= paket zip ================= */
 const CRCT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
