@@ -72,6 +72,14 @@ input:checked+.chip.bad{background:var(--bad);border-color:var(--bad);color:var(
 fieldset{border:0;padding:0;margin:0;min-width:0}
 .jr{border:1px solid var(--bd);border-radius:12px;padding:10px;margin-bottom:8px;background:var(--card2)}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.jr{padding:12px;margin-bottom:12px}
+.jr .t{font-weight:800;font-size:14px;margin-bottom:10px;display:flex;gap:8px;align-items:center}
+.jr .t .no{background:var(--acc);color:#fff;border-radius:99px;min-width:24px;height:24px;display:grid;place-items:center;font-size:12px}
+.ba2{display:grid;grid-template-columns:84px 1fr 1fr;gap:10px 8px}
+.ba2.b{grid-template-columns:1fr 1fr;margin-top:10px}
+.ba2>div{min-width:0}
+.ba2 label{display:block;font:600 11.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.04em;text-transform:uppercase;color:var(--acc);margin:0 0 4px}
+.ba2 input{width:100%}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .grid>div>label,.grid3>div>label{display:block;font-size:11px;color:var(--mut)}
 .res{font-variant-numeric:tabular-nums}
@@ -130,7 +138,7 @@ main.hastab{padding-bottom:96px}
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
-const VERSI='2 Nov 2026 · v9.7 (dialog peringatan baru)';
+const VERSI='2 Nov 2026 · v9.9 (form sama dengan file asli)';
 /* ================= util ================= */
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){const v=attrs[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(k,v===true?'':v);}for(const c of kids.flat(2)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;}
 const ICON={calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',gauge:'<path d="M12 14l4-4"/><path d="M3.3 17a10 10 0 1 1 17.4 0"/>',inbox:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'};
@@ -309,7 +317,7 @@ async function onPick(e,ctx){const files=[...e.target.files];if(!files.length||!
  say(fail?('⚠ '+ok+' foto tersimpan, '+fail+' gagal ('+last+')'):('✔ '+ok+' foto tersimpan'+(nowm?' (tanpa watermark, '+last+')':'')));
  if(after)try{await after()}catch(_){}
  if(fail)await alertX('Gagal menyimpan '+fail+' foto: '+last)}
-async function fillThumbs(box,rec,ref,locked){box.innerHTML='';const ps=(await photosOf(rec.id)).filter(p=>p.ref===ref);for(const p of ps){const u=URL.createObjectURL(p.blob);box.append(h('div',{class:'th'},h('img',{src:u,onclick:()=>window.open(u)}),locked?null:h('button',{class:'x',onclick:async()=>{if(await confirmX('Hapus foto ini?')){await dbDel('photos',p.pid);fillThumbs(box,rec,ref,locked)}}},'×')))}}
+async function fillThumbs(box,rec,ref,locked){box.innerHTML='';const ps=(await photosOf(rec.id)).filter(p=>p.ref===ref);{const cn=box.parentNode&&box.parentNode.querySelector('.fcount');if(cn){cn.textContent=ps.length?ps.length+' foto':'Belum ada foto';cn.className='badge fcount '+(ps.length?'ok':'draft')}}for(const p of ps){const u=URL.createObjectURL(p.blob);box.append(h('div',{class:'th'},h('img',{src:u,onclick:()=>window.open(u)}),locked?null:h('button',{class:'x',onclick:async()=>{if(await confirmX('Hapus foto ini?')){await dbDel('photos',p.pid);fillThumbs(box,rec,ref,locked)}}},'×')))}}
 
 /* ================= navigasi ================= */
 const app=$('#app');
@@ -689,18 +697,17 @@ const PM_JENIS_DEF=['Pembersihan','Perbaikan sambungan / terminasi','Perbaikan d
 const PM_JENIS_TRAFO=['Flushing trafo','Pemeliharaan trafo (lainnya)'];
 const PM_SISTEMATIS='Pemeliharaan sistematis';
 const PM_KATA=['Pembersihan selesai','Sambungan dikencangkan','Fuse diganti','Grounding diperbaiki','Pengecatan selesai','Duck kabel dibersihkan','Pagar diperbaiki','Flushing selesai','Kondisi normal kembali','Beban normal'];
-/* Form Pemeliharaan Sistematis GD Beton (FM-bright-SBU-DI-ST-02-07 B): nomor item sama dengan form inspeksi beton. Pilihan tindakan dibaca dari form kertas; "Lainnya" lewat kolom catatan. */
-const DB_=['Dibersihkan'],GS=['Dibersihkan','Dilapis sealant','Ganti seal','Kencangkan baut'],LP=['Dibersihkan','Dilapis / dimempul'];
+/* Form Pemeliharaan Sistematis GD Beton (FM-bright-SBU-DI-ST-02-07 B): nomor item sama dengan form inspeksi beton. Pilihan tindakan persis dari file asli form_pemeliharaan.xlsx; hal lain lewat kolom catatan. */
 const PM_SIS=[
- {g:'TRAFO 20 kV',items:[{n:1,t:'Level minyak',o:['Isi ulang','Ganti oli','Flushing oli']},{n:2,t:'Kebocoran minyak',o:GS},{n:3,t:'Seal body trafo',o:GS},{n:4,t:'Seal bushing TM/TR',o:GS},{n:5,t:'Bushing TM/TR',o:['Dibersihkan','Kencangkan baut','Ganti seal']},{n:6,t:'Kondisi fisik trafo',o:['Dibersihkan','Ganti trafo']}]},
- {g:'KUBIKEL 20 kV',items:[{n:7,t:'Busbar',o:['Dibersihkan','Diganti']},{n:8,t:'Terminasi (ID) TM',o:['Dibersihkan','Diganti']},{n:9,t:'Heater',o:['Dibersihkan','Diganti','Tidak ada / kubikel fully insulated']},{n:10,t:'Body',o:['Dibersihkan','Diganti']},{n:11,t:'Lampu indikator',o:['Dibersihkan','Diganti']},{n:12,t:'Fuse TM',o:['Dibersihkan','Diganti']}]},
- {g:'PANEL TR',items:[{n:13,t:'Fuse base',o:['Dibersihkan','Diganti']},{n:14,t:'Kesesuaian ampere fuse TR',o:['Disesuaikan']},{n:15,t:'Sambungan busbar',o:['Dibersihkan','Kencangkan baut']},{n:16,t:'Single core TR',o:['Dibersihkan','Kencangkan baut','Diganti','Ditambah']}]},
- {g:'EARTH FAULT INDIKATOR (EFI)',items:[{n:17,t:'Lampu indikator',o:['Perbaikan','Ganti baru']},{n:18,t:'Power suplai & instalasi',o:['Perbaikan','Ganti baru']}]},
- {g:'BANGUNAN GARDU & PAGAR',items:[{n:19,t:'Duck atap',o:['Dibersihkan','Dilapis / dimempul','Ganti atap duck']},{n:20,t:'Lantai kerja dalam',o:['Dibersihkan','Dilapis / dimempul','Cor ulang lantai']},{n:21,t:'Lantai rabat luar',o:['Dibersihkan','Dilapis / dimempul','Cor ulang lantai']},{n:22,t:'Cat bangunan',o:['Dibersihkan','Cat ulang']},{n:23,t:'Duck kabel TM/TR',o:['Disedot','Tutup lubang air','Isi pasir cor']},{n:24,t:'Ventilasi',o:['Dibersihkan','Cat ulang','Ganti ventilasi','Instalasi ulang']},{n:25,t:'Lamp & instalasi',o:['Diperbaiki','Ganti bola lampu','Instalasi ulang']},{n:26,t:'Pagar bangunan',o:['Dipasang baru','Tidak ada']},{n:27,t:'Cat pagar',o:['Cat ulang']},{n:28,t:'Engsel pintu gardu',o:['Dibersihkan','Ganti engsel','Dilas']},{n:29,t:'Dudukan gembok gardu',o:['Dibersihkan','Dilas','Ganti dudukan gembok']},{n:30,t:'Lingkungan gardu',o:['Dibersihkan']},{n:31,t:'Exhaust fan',o:['Pasang baru','Diganti baru']},{n:32,t:'Suhu dalam gardu',o:['Pasang AC','Penambahan heater']}]},
- {g:'GROUNDING',items:[{n:33,t:'Grounding',o:['Sambungan dikencangkan','Diganti / tarik baru','Di-bor ulang'],ohm:true}]}
+ {g:"TRAFO 20 kV",items:[{n:1,t:"Level minyak",o:["Penuh", "Diisi ulang", "Ganti oli", "Flushing oli"]},{n:2,t:"Kebocoran minyak",o:["Dibersihkan", "Dilapisi sealen", "Ganti seal", "Kencangkan baut"]},{n:3,t:"Seal body trafo",o:["Dibersihkan", "Dilapisi sealen", "Ganti seal", "Kencangkan baut"]},{n:4,t:"Seal bushing TM/TR",o:["Dibersihkan", "Dilapisi sealen", "Ganti seal", "Kencangkan baut"]},{n:5,t:"Bushing TM/TR",o:["Dibersihkan", "Kencangkan baut"]},{n:6,t:"Kondisi fisik trafo",o:["Dibersihkan", "Ganti trafo"]}]},
+ {g:"KUBIKEL 20 kV",items:[{n:7,t:"Busbar",o:["Dibersihkan", "Diganti"]},{n:8,t:"Terminasi (ID) TM",o:["Dibersihkan", "Diganti"]},{n:9,t:"Heater",o:["Dibersihkan", "Diganti", "Tidak ada / kubikel fully insulated"]},{n:10,t:"Body",o:["Dibersihkan", "Diganti"]},{n:11,t:"Lampu indikator",o:["Dibersihkan", "Diganti"]},{n:12,t:"Fuse TM",o:["Dibersihkan", "Diganti"]}]},
+ {g:"PANEL TR",items:[{n:13,t:"Fuse base",o:["Dibersihkan", "Diganti"]},{n:14,t:"Kesesuaian ampere fuse TR",o:["Dibersihkan", "Disesuaikan"]},{n:15,t:"Sambungan busbar",o:["Dibersihkan", "Kencangkan baut"]},{n:16,t:"Single core TR",o:["Dibersihkan", "Kencangkan baut", "Diganti", "Ditambah"]}]},
+ {g:"EARTH FAULT INDIKATOR (EFI)",items:[{n:17,t:"Lampu indikator",o:["Perbaikan", "Ganti baru"]},{n:18,t:"Power suplai & instalasi",o:["Perbaikan", "Ganti baru"]}]},
+ {g:"BANGUNAN GARDU & PAGAR",items:[{n:19,t:"Duck atap",o:["Dibersihkan", "Dilapisi / didempul", "Ganti atap duck"]},{n:20,t:"Lantai kerja dalam",o:["Dibersihkan", "Dilapisi / didempul", "Cor ulang lantai"]},{n:21,t:"Lantai rabat luar",o:["Dibersihkan", "Dilapisi / didempul", "Cor ulang lantai"]},{n:22,t:"Cat bangunan",o:["Dibersihkan", "Cat ulang"]},{n:23,t:"Duck kabel TM/TR",o:["Disedot", "Tutup lobang air", "Isi pasir cor"]},{n:24,t:"Ventilasi",o:["Dibersihkan", "Cat ulang", "Ganti ventilasi"]},{n:25,t:"Lamp & instalasi",o:["Diperbaiki", "Ganti bola lampu", "Instalasi ulang"]},{n:26,t:"Pagar bangunan",o:["Dipasang baru", "Cat ulang", "Tidak ada"]},{n:27,t:"Cat pagar",o:["Tidak ada", "Cat ulang"]},{n:28,t:"Engsel pintu gardu",o:["Dibersihkan", "Ganti engsel", "Dilas"]},{n:29,t:"Dudukan gembok gardu",o:["Dibersihkan", "Dilas", "Ganti dudukan gembok gardu"]},{n:30,t:"Lingkungan gardu",o:["Dibersihkan"]},{n:31,t:"Exhaust fan",o:["Pasang baru", "Diganti baru"]},{n:32,t:"Suhu dalam gardu",o:["Pasang AC", "Penambahan heater"]}]},
+ {g:"GROUNDING",items:[{n:33,t:"Grounding",o:["Sambungan dikencangkan", "Diganti / tarik baru", "Di-bor ulang"],ohm:true}]}
 ];
 const PM_SIS_ITEM={};PM_SIS.forEach(g=>g.items.forEach(i=>{PM_SIS_ITEM[i.n]=i}));
-const PM_BA=['Kubikel IM/IS','Kubikel VT','Kubikel CB','Kubikel TP3 OM','Kubikel RMU','Trafo distribusi','Rak TR','PT','CT'];
+const PM_BA=['KUBIKEL IM,IS','KUBIKEL VT','KUBIKEL CB','KUBIKEL TP3,QM','KUBIKEL RMU','TRAFO DISTRIBUSI','RAK TR','PT','CT'];
 const PM_HARI=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'],PM_BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 const pmTgl=s=>{const m=/^(\d{4})-(\d\d)-(\d\d)$/.exec(s||'');if(!m)return s||'';const d=new Date(+m[1],+m[2]-1,+m[3]);return PM_HARI[d.getDay()]+', '+(+m[3])+' '+PM_BLN[+m[2]-1]+' '+m[1]};
 const pmJamT=(a,b)=>String(a||'').replace(':','.')+' - '+String(b||'').replace(':','.');
@@ -853,7 +860,7 @@ async function pmForm(rid,baru){const it=S.items.find(x=>x.rencana_id===rid);if(
  fs.append(h('div',{class:'card'},pmL('Status pekerjaan'),hasilBox,pmL('Tanggal'),bind(h('input',{type:'date',max:today()}),'tanggal')),sec);
  function fotoBox(ref,label,wajib){const box=h('div',{class:'thumbs'}),note=h('div',{class:'mut',style:'min-height:18px'});
   const mk=()=>{persist();return{rec,ref,label,note,after:()=>fillThumbs(box,rec,ref,locked)}};
-  const c=h('div',{class:'card'},pmL(label+(wajib?' (minimal 1)':' (opsional)')),locked?null:h('div',{class:'row'},photoBtn('📷 Foto',false,mk),photoBtn('🖼 Galeri',true,mk)),note,box);fillThumbs(box,rec,ref,locked);return c}
+  const c=h('div',{class:'card'},h('div',{class:'sech'},pmL(label+(wajib?' (minimal 1)':' (opsional)')),h('span',{class:'badge draft fcount'},'Belum ada foto')),locked?null:h('div',{class:'row'},photoBtn('📷 Foto',false,mk),photoBtn('🖼 Galeri',true,mk)),note,box);fillThumbs(box,rec,ref,locked);return c}
  function ceki(v,ph,k,o){const e=h('input',{type:'text',placeholder:ph,autocomplete:'off'});return bind(e,k,o)}
  function checklist(){const wrap=h('div');
   wrap.append(h('div',{class:'card'},h('div',{class:'gname'},'Form pemeliharaan sistematis'),h('div',{class:'mut'},'FM-bright-SBU-DI-ST-02-07 B · gardu beton. Centang tindakan yang dikerjakan per item. Item yang tidak disentuh dikosongkan saja.')));
@@ -877,8 +884,10 @@ async function pmForm(rid,baru){const it=S.items.find(x=>x.rencana_id===rid);if(
  function baperalatan(){const b=rec.ba,c=h('details',{class:'card'});c.append(h('summary',{style:'font-weight:700;cursor:pointer'},'BA pemeriksaan peralatan gardu (FM-bright-SBU-DIST-02-03)'));
   c.append(h('div',{class:'mut',style:'margin:6px 0'},'Diisi di hari pemeliharaan yang sama. Kosongkan baris yang tidak ada.'),pmL('Jenis gardu'));
   const js=h('select',null,[['distribusi','Gardu distribusi'],['tm','Gardu pelanggan TM']].map(o=>h('option',{value:o[0]},o[1])));bind(js,'jenis_gardu',b);c.append(js);
-  b.rows.forEach((r,i)=>{c.append(h('div',{class:'jr'},h('div',{class:'t'},(i+1)+'. '+r.nama),h('div',{class:'grid3'},h('div',null,h('label',null,'Jumlah'),bind(h('input',{type:'text',inputmode:'numeric'}),'jumlah',r)),h('div',null,h('label',null,'Type'),bind(h('input',{type:'text'}),'type',r)),h('div',null,h('label',null,'Merk'),bind(h('input',{type:'text'}),'merk',r))),
-   h('div',{class:'grid',style:'grid-template-columns:1fr 1fr;margin-top:6px'},h('div',null,h('label',null,'No. seri'),bind(h('input',{type:'text'}),'noseri',r)),h('div',null,h('label',null,'Kapasitas / ratio'),bind(h('input',{type:'text'}),'kap',r)))))});
+  const fld=(lbl,k,r,at)=>h('div',null,h('label',null,lbl),bind(h('input',Object.assign({type:'text',autocomplete:'off'},at||{})),k,r));
+  b.rows.forEach((r,i)=>{c.append(h('div',{class:'jr'},h('div',{class:'t'},h('span',{class:'no'},String(i+1)),r.nama),
+   h('div',{class:'ba2'},fld('Jumlah','jumlah',r,{inputmode:'numeric',placeholder:'0'}),fld('Type','type',r),fld('Merk','merk',r)),
+   h('div',{class:'ba2 b'},fld('No. seri','noseri',r),fld('Kapasitas / ratio','kap',r))))});
   c.append(pmL('Catatan realisasi pemeliharaan'),bind(h('textarea',{rows:'3',placeholder:'Kosong = terisi otomatis dari tindakan yang dicentang'}),'realisasi',b),pmL('Pengawas'),bind(h('input',{type:'text'}),'pengawas',b));return c}
  function isi(){sec.innerHTML='';
   if(rec.hasil!=='terlaksana'){sec.append(h('div',{class:'card'},pmL(rec.hasil==='ditunda'?'Alasan ditunda (wajib)':'Alasan batal (wajib)'),bind(h('textarea',{placeholder:rec.hasil==='ditunda'?'mis. hujan, pelanggan belum siap, material belum ada':'mis. permintaan pelanggan, gardu sudah dikerjakan'}),'alasan'),
