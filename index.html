@@ -192,7 +192,7 @@ const S={tugas:[],records:[],prec:[],items:[],jenis:[],mode:'',petugas:'',area:'
 const splitPic=s=>String(s||'').split(/\s*(?:\/|&|,|;|\+|\bdan\b)\s*/i).map(x=>x.trim()).filter(Boolean);
 // nama petugas di BA = PIC gardu dari penugasan; kalau tidak ada, pakai nama terakhir yang diketik di form
 const petOf=t=>{const n=splitPic(t&&t.pic);return n.length?n.join(' & '):(S.petugas||'')};
-async function loadState(){S.tugas=(await dbGet('meta','tugas'))||[];S.petugas=(await dbGet('meta','petugas'))||'';S.log=(await dbGet('meta','log'))||[];S.area=(await dbGet('meta','area'))||'';const all=await dbAll('records');S.records=all.filter(r=>r.form!=='pemeliharaan');S.prec=all.filter(r=>r.form==='pemeliharaan');S.items=(await dbGet('meta','rencana'))||[];S.jenis=(await dbGet('meta','jenis'))||PM_JENIS_DEF;S.mode=(await dbGet('meta','mode'))||'';if(!S.mode&&(S.tugas.length||S.records.length))S.mode='inspeksi'}
+async function loadState(){S.tugas=(await dbGet('meta','tugas'))||[];S.petugas=(await dbGet('meta','petugas'))||'';S.log=(await dbGet('meta','log'))||[];S.area=(await dbGet('meta','area'))||'';const all=await dbAll('records');S.records=all.filter(r=>r.form!=='pemeliharaan');S.prec=all.filter(r=>r.form==='pemeliharaan');S.items=(await dbGet('meta','rencana'))||[];S.jenis=(await dbGet('meta','jenis'))||PM_JENIS_DEF;S.mode=(await dbGet('meta','mode'))||'';if(!S.mode&&(S.tugas.length||S.records.length))S.mode='inspeksi';if(!SRV.dimuat){await srvLoad();SRV.dimuat=1}{const lk=timMode();if(lk&&S.mode!==lk){S.mode=lk;await dbPut('meta',lk,'mode')}}}
 const saveTugas=()=>dbPut('meta',S.tugas,'tugas');
 const saveRec=r=>{r.updated=new Date().toISOString();return dbPut('records',r)};
 
@@ -312,15 +312,7 @@ function sha256(ascii){function rr(v,a){return(v>>>a)|(v<<(32-a))}var mp=Math.po
   for(i=0;i<8;i++)hash[i]=(hash[i]+old[i])|0}
  for(i=0;i<8;i++)for(j=3;j+1;j--){var b=(hash[i]>>(j*8))&255;result+=((b<16)?0:'')+b.toString(16)}return result}
 async function hashPin(p){return sha256('ig1:'+String(p))}
-async function adminOk(why,fresh){if(!fresh&&Date.now()<adminUntil)return true;const ph=await dbGet('meta','pinhash');
- if(!ph)return true;
- if(Date.now()<pinLock){alert('Terlalu banyak salah. Coba lagi 1 menit lagi.');return false}
- const o=await dlg('PIN admin: '+why,[{key:'a',label:'Masukkan PIN',pw:1}]);if(!o)return false;
- if(await hashPin(o.a)===ph){pinFail=0;adminUntil=Date.now()+300000;return true}
- if(++pinFail>=5){pinLock=Date.now()+60000;pinFail=0}alert('PIN salah');return false}
-async function ubahPin(){const ph=await dbGet('meta','pinhash');
- if(!ph){const o=await dlg('Atur PIN admin',[{key:'a',label:'PIN baru (4–6 angka). Dipegang admin, jangan diberikan ke petugas. (Bisa juga otomatis dari paket penugasan kantor.)',pw:1},{key:'b',label:'Ulangi PIN',pw:1}]);if(!o)return;if(!/^\d{4,6}$/.test(o.a)){alert('PIN harus 4–6 angka');return}if(o.a!==o.b){alert('Kedua PIN tidak sama');return}await dbPut('meta',await hashPin(o.a),'pinhash');adminUntil=Date.now()+300000;alert('PIN admin dipasang');return}
- const o=await dlg('Ubah PIN admin',[{key:'o',label:'PIN lama',pw:1},{key:'a',label:'PIN baru (4–6 angka)',pw:1}]);if(!o)return;if(await hashPin(o.o)!==ph){alert('PIN lama salah');return}if(!/^\d{4,6}$/.test(o.a)){alert('PIN baru harus 4–6 angka');return}await dbPut('meta',await hashPin(o.a),'pinhash');alert('PIN admin diubah')}
+async function adminOk(){return true}
 async function catat(aksi,t){S.log.push({t:new Date().toISOString(),aksi,id:t.id,nama:t.nama,oleh:petOf(t)});if(S.log.length>300)S.log=S.log.slice(-300);await dbPut('meta',S.log,'log')}
 const JENIS_OPTS=[['','— pilih —'],['tiang','Gardu Tiang'],['beton','Gardu Beton'],['tm','Beton pelanggan TM (tanpa trafo)']];
 const JENIS_LBL={tiang:'Tiang',beton:'Beton',tm:'Pelanggan TM'};
@@ -346,8 +338,7 @@ function openMenuInspeksi(){let d=$('#drawer');
   item('c-kirim','send','Server DIGARDU',SRV.cfg&&SRV.cfg.url?('Kirim langsung · '+(SRV.cfg.user||'belum login')):'Belum diatur (kirim lewat zip)',srvDialog),
   item('c-impor','inbox','Kirim paket zip','Cadangan lewat WhatsApp',kirimZipSekarang),
   h('div',{class:'dsep'},'Pengaturan'),
-  item('c-manual','list','Ganti mode','Sekarang: Inspeksi',gantiMode),
-  item('c-pin','lock','PIN admin','Atur / ubah PIN',ubahPin),
+  ...(timMode()?[]:[item('c-manual','list','Ganti mode','Sekarang: Inspeksi',gantiMode)]),
   item('c-tema',isDark()?'sun':'moon',isDark()?'Tema terang':'Tema gelap','Ganti tampilan',()=>{THEME.set(isDark()?'light':'dark');applyTheme();renderHome()}),
   h('div',{class:'dfoot'},h('div',null,'Versi aplikasi: '+VERSI),h('div',{style:'margin-top:4px'},'Data tersimpan di HP ini (IndexedDB). Jangan hapus data browser sebelum paket terkirim.')));
  d.classList.add('on');$('#scrim').classList.add('on')}
@@ -365,8 +356,8 @@ function homeTabs(list){const nK=list.filter(terkirimT).length,nA=list.length-nK
 function hapusTerkirimBtn(t){return h('button',{type:'button',class:'btn sec sm',style:'flex:0',title:'Hapus dari HP (sudah terkirim)','aria-label':'Hapus dari HP',onclick:ev=>{ev.stopPropagation();hapusTerkirim(t)}},ico('trash',15))}
 async function hapusTerkirim(t){
  if(!terkirimT(t))return alert('Hanya data yang sudah terkirim yang boleh dihapus dari HP.');
- if(!(await adminOk('hapus data terkirim dari HP',true)))return;
  const rs=S.records.filter(r=>r.gardu.id===t.id);
+ {const gagal=await cekDiServer(rs);if(gagal)return alert(gagal)}
  if(!confirm('Hapus '+t.nama+' dari HP?\n\n'+rs.length+' data inspeksi / ukur beban beserta fotonya dihapus dari HP ini. Data yang sudah terkirim ke PC tidak terpengaruh. Tidak bisa dibatalkan.'))return;
  await catat('hapus-terkirim',t);
  for(const r of rs){for(const p of await photosOf(r.id))await dbDel('photos',p.pid);await dbDel('records',r.id)}
@@ -379,7 +370,7 @@ async function renderHome(){await loadState();if(!S.mode)return pilihMode();retu
 async function renderHomeInspeksi(){app.innerHTML='';
  {let ch=false;for(const t of S.tugas){if(t.jenis&&!t.jenisOleh&&!t.jenisMaster&&!t.manual&&!S.records.some(r=>r.gardu.id===t.id)){t.jenis='';ch=true}}if(ch)await saveTugas()}
  app.append(topBar('Inspeksi Gardu',null,true));
- const m=h('main',{class:'hastab'});
+ const m=h('main',{class:'hastab'});{const c=pengingat(kirimQueue(),()=>kirimUtama(kirimQueue()));if(c)m.append(c)}
  m.append(h('div',{class:'row',style:'margin-bottom:12px'},h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:()=>{const f=$('#fcsv');f.value='';f.click()}},ico('inbox',17),'Impor penugasan'),h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:async()=>addManual()},ico('plus',17),'Gardu manual')));
  // satu daftar gardu: penugasan + gardu yang sudah pernah diinspeksi tapi tidak ada di penugasan; status inspeksi/beban/pengiriman ada di kartu masing-masing
  const known=new Set(S.tugas.map(t=>t.id)),extra=[];for(const r of S.records){if(!known.has(r.gardu.id)){known.add(r.gardu.id);extra.push({...tugasOf(r),_extra:true})}}
@@ -420,10 +411,10 @@ async function terapkanTugas(list,kunci){
   if(!bt.length){if(!confirm('File ini berisi '+list.length+' gardu tanpa tanggal rencana atau PIC. Kelihatannya master gardu, bukan jadwal inspeksi.\n\nTetap impor semua '+list.length+' gardu?'))return}
   else if(bt.length<list.length){if(confirm('File berisi '+list.length+' gardu, '+bt.length+' di antaranya punya tanggal rencana atau PIC.\n\nOK = impor hanya '+bt.length+' gardu yang terjadwal.\nBatal = lanjut pilihan lain.'))list=bt;else if(!confirm('Impor semua '+list.length+' gardu? (Batal = tidak impor apa pun)'))return}}
  const by=new Map(S.tugas.map(t=>[t.id,t]));let baru=0;for(const t of list){if(by.has(t.id)){Object.assign(by.get(t.id),{...t,jenis:t.jenisMaster&&!S.records.some(r=>r.gardu.id===t.id)?t.jenis:(by.get(t.id).jenis||t.jenis),lokasi:t.lokasi||by.get(t.id).lokasi})}else{S.tugas.push(t);baru++}}
- let pinInfo='';if(kunci){const ada=await dbGet('meta','pinhash');if(!ada||Date.now()<adminUntil){await dbPut('meta',kunci,'pinhash');pinInfo=ada?'\nPIN admin diperbarui dari file.':'\nPIN admin dari kantor sudah dipasang.'}}
+ let pinInfo='';
  await saveTugas();
  const nm=list.filter(t=>t.jenisMaster).length;alert(`Terbaca ${list.length} gardu (${baru} baru).\n`+(nm?`Jenis gardu dari master: ${nm} gardu. Sisanya ditentukan petugas saat gardu diketuk di HP.`:'Jenis gardu (tiang / beton / TM) ditentukan petugas saat gardu diketuk di HP.')+pinInfo);renderHome()}
-$('#fcsv').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const rows=/\.xlsx$/i.test(f.name)?await xlsxRows(await f.arrayBuffer()):parseCSV(await f.text());await terapkanTugas(rowsToTugas(rows),kunciOf(rows))}catch(err){alert('Gagal impor file penugasan: '+err.message)}});
+$('#fcsv').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{if(/\.json$/i.test(f.name))throw new Error('Ini paket rencana PEMELIHARAAN (.json), bukan penugasan inspeksi. Pakai mode Pemeliharaan untuk mengimpornya.');const rows=/\.xlsx$/i.test(f.name)?await xlsxRows(await f.arrayBuffer()):parseCSV(await f.text());await terapkanTugas(rowsToTugas(rows),kunciOf(rows))}catch(err){alert('Gagal impor file penugasan: '+err.message)}});
 async function addManual(){const o=await dlg('Tambah gardu',[{key:'nama',label:'Nama gardu'},{key:'lokasi',label:'Area',opts:[['','— pilih —'],...AREAS.map(a=>[a,a])]},{key:'jenis',label:'Jenis gardu',opts:JENIS_OPTS}]);if(!o||!o.nama)return;const nt={id:slug(o.nama)+'-'+Date.now().toString(36).slice(-4),nama:o.nama,lokasi:o.lokasi,jenis:o.jenis,penyulang:'',kva:'',manual:true};S.tugas.push(nt);await catat('tambah',nt);await saveTugas();renderHome()}
 // jenis gardu ditentukan petugas di HP (satu-satunya sumber). Setiap penentuan dicatat di log (ikut paket) supaya admin bisa mencocokkan dengan screenshot penugasan.
 async function pilihJenis(t,why){const o=await dlg('Ini gardu apa? '+t.nama+(why?' — '+why:''),[{key:'jenis',label:'Jenis gardu',opts:JENIS_OPTS,value:t.jenis||(t.idpel?'tm':'')}]);if(!o||!o.jenis)return false;
@@ -440,7 +431,7 @@ async function renderGardu(id){await loadState();app.innerHTML='';
  if(!t.jenis){const ins0=latestRec(id,'tiang')||latestRec(id,'beton');if(ins0)t.jenis=ins0.tm?'tm':ins0.form}
  app.append(topBar(t.nama,renderHome));const m=h('main');const card=h('div',{class:'card'});
  card.append(h('div',{class:'row',style:'flex-wrap:nowrap;align-items:flex-start'},h('div',{style:'flex:1;min-width:0'},h('div',{class:'gname'},h('b',null,t.nama)),h('div',{class:'gmeta'},[!t.manual&&t.id,t.lokasi,t.penyulang&&('Peny. '+t.penyulang),t.rencana&&('Rencana '+t.rencana),t.pic&&('PIC '+t.pic)].filter(Boolean).join(' · '))),
-  h('button',{type:'button',class:'badge'+(t.jenis?'':' draft'),style:'flex:0;white-space:nowrap;cursor:pointer',title:t.jenis?'Ubah jenis gardu (PIN admin)':'Tentukan jenis gardu','aria-label':'Jenis gardu',onclick:()=>ubahJenis(t,()=>renderGardu(id))},JENIS_LBL[t.jenis]||'Jenis ? (ketuk)')));
+  h('button',{type:'button',class:'badge'+(t.jenis?'':' draft'),style:'flex:0;white-space:nowrap;cursor:pointer',title:t.jenis?'Ubah jenis gardu':'Tentukan jenis gardu','aria-label':'Jenis gardu',onclick:()=>ubahJenis(t,()=>renderGardu(id))},JENIS_LBL[t.jenis]||'Jenis ? (ketuk)')));
  for(const fm of['inspeksi','beban']){if(fm==='beban'&&t.jenis==='tm')continue;
   if(fm==='beban'&&!t.jenis&&!latestRec(t.id,'beban')){card.append(h('div',{class:'mut',style:'margin-top:8px'},'Ukur Beban: tentukan jenis gardu dulu (ketuk badge jenis di atas).'));continue}
   const r=fm==='inspeksi'?(t.jenis&&formOf(t.jenis)?latestRec(t.id,formOf(t.jenis)):(latestRec(t.id,'tiang')||latestRec(t.id,'beton'))):latestRec(t.id,'beban');
@@ -610,7 +601,7 @@ async function srvCall(o,ms){const c=new AbortController(),t=setTimeout(()=>c.ab
  finally{clearTimeout(t)}}
 async function srvLogin(){let pw=SRV.cfg.pass;if(!pw){pw=prompt('Password DIGARDU untuk '+SRV.cfg.user+':');if(pw===null)throw new Error('Login dibatalkan.')}
  const j=await srvCall({aksi:'login',username:SRV.cfg.user,password:pw},60000);if(!j.ok)throw new Error(String(j.error||'Login gagal').replace(/^(SESI|GANTI):\s*/,''));
- SRV.cfg.tok=j.data&&j.data.token||'';if(!SRV.cfg.tok)throw new Error('Server tidak memberi token login.');await srvSimpan()}
+ SRV.cfg.tok=j.data&&j.data.token||'';if(!SRV.cfg.tok)throw new Error('Server tidak memberi token login.');SRV.cfg.tim=(j.data.user&&j.data.user.tim)||'';await srvSimpan()}
 async function srvAksi(o,ms){if(!SRV.cfg.tok)await srvLogin();let j=await srvCall(Object.assign({},o,{tok:SRV.cfg.tok}),ms);
  if(!j.ok&&/^SESI:/.test(String(j.error||''))){SRV.cfg.tok='';await srvLogin();j=await srvCall(Object.assign({},o,{tok:SRV.cfg.tok}),ms)}
  if(!j.ok)throw new Error(String(j.error||'Gagal').replace(/^(SESI|GANTI):\s*/,''));return j.data}
@@ -630,7 +621,7 @@ function srvDialog(){const dlg=h('dialog',null);const inUrl=h('input',{type:'url
   const pw=inPass.value||SRV.cfg.pass;if(!pw){msg.textContent='Isi password.';return}
   ok.disabled=true;msg.textContent='Menghubungi server...';const lama=Object.assign({},SRV.cfg);
   try{SRV.cfg={url,user,pass:pw,tok:''};await srvLogin();const d=await srvAksi({aksi:'ping'},60000);
-   SRV.cfg.pass=ingat.checked?pw:'';await srvSimpan();msg.textContent='Tersambung: '+d.user.nama+' ('+d.user.peran+'), '+d.app+' v'+d.versi+'. Tersimpan.';
+   SRV.cfg.pass=ingat.checked?pw:'';SRV.cfg.tim=(d.user&&d.user.tim)||SRV.cfg.tim||'';await srvSimpan();renderHome();msg.textContent='Tersambung: '+d.user.nama+' ('+d.user.peran+(d.user.tim&&d.user.tim!=='Keduanya'?', tim '+d.user.tim:'')+'), '+d.app+' v'+d.versi+'. Tersimpan.';
    if(!/^(Petugas|Admin|Super Admin)$/.test(d.user.peran))msg.textContent+=' PERINGATAN: peran '+d.user.peran+' tidak boleh mengirim.'}
   catch(e){SRV.cfg=lama;msg.textContent='Gagal: '+e.message}ok.disabled=false};
  const hapus=h('button',{class:'btn sec sm',type:'button'},'Hapus pengaturan');
@@ -726,7 +717,7 @@ function pmRingkasSis(rec){const out=[];Object.keys(rec.cek||{}).map(Number).sor
 function pmCekLap(rec){return Object.keys(rec.cek||{}).map(Number).sort((a,b)=>a-b).map(n=>({no:n,item:(PM_SIS_ITEM[n]||{}).t||'',tindakan:(rec.cek[n].t||[]).slice(),catatan:String(rec.cek[n].c||'').trim()})).filter(x=>x.tindakan.length||x.catatan)}
 
 /* ===== impor paket rencana (.json dari DIGARDU) ===== */
-async function pmImpor(file){try{const p=JSON.parse(await file.text());
+async function pmImpor(file){try{if(/\.(xlsx|xls|csv)$/i.test(file.name||''))throw new Error('Ini file penugasan INSPEKSI (Excel/CSV), bukan paket rencana pemeliharaan (.json). Pakai mode Inspeksi untuk mengimpornya.');const tx=await file.text();let p;try{p=JSON.parse(tx)}catch(e){throw new Error('File ini bukan paket rencana pemeliharaan (.json) dari DIGARDU.')}
   if(!p||p.format!=='pemeliharaan-paket'||!Array.isArray(p.items))throw new Error('Ini bukan paket rencana pemeliharaan dari DIGARDU.');
   let baru=0,ubah=0;for(const x of p.items){if(!x||!x.rencana_id||!x.gardu_id)continue;const i=S.items.findIndex(y=>y.rencana_id===x.rencana_id);if(i>=0){S.items[i]=Object.assign({},S.items[i],x);ubah++}else{S.items.push(x);baru++}}
   if(Array.isArray(p.jenis)&&p.jenis.length){S.jenis=[...new Set([...p.jenis,PM_SISTEMATIS])];await dbPut('meta',S.jenis,'jenis')}
@@ -746,7 +737,7 @@ function pmTabs(){const nA=S.items.filter(i=>!pmTuntas(i)).length,nS=S.items.len
   tb('c-kirim','send','Kirim',false,pmKirimSekarang,nP),
   tb('c-menu','menu','Menu',false,pmMenu))}
 async function pmHome(){await loadState();app.innerHTML='';app.append(topBar('Pemeliharaan Gardu',null,true));
- const m=h('main',{class:'hastab'});
+ const m=h('main',{class:'hastab'});{const c=pengingat(pmQueue(),pmKirimSekarang);if(c)m.append(c)}
  if(!S.items.length){m.append(h('div',{class:'card'},h('div',{class:'gname'},'Belum ada rencana'),h('p',{class:'mut'},'Minta paket rencana (file .json) dari kantor lewat WhatsApp, simpan di HP ini, lalu impor.'),h('button',{class:'btn',type:'button',onclick:pmPilihPaket},ico('inbox',18),'Impor paket rencana')));app.append(m,pmTabs());return}
  const q=h('input',{type:'text',placeholder:'Cari gardu, kode, atau pekerjaan',value:PM_LF.q,oninput:e=>{PM_LF.q=e.target.value;debounce(()=>draw(),250)}});m.append(h('div',{class:'fil'},q));
  const box=h('div');m.append(box);
@@ -776,25 +767,34 @@ function pmMenu(){let d=$('#drawer');
   item('c-kirim','send','Server DIGARDU',SRV.cfg&&SRV.cfg.url?('Kirim langsung · '+(SRV.cfg.user||'belum login')):'Belum diatur (kirim lewat zip)',srvDialog),
   item('c-impor','inbox','Kirim paket zip','Cadangan lewat WhatsApp',pmKirimZip),
   h('div',{class:'dsep'},'Pengaturan'),
-  item('c-manual','list','Ganti mode','Sekarang: Pemeliharaan',gantiMode),
-  item('c-pin','lock','PIN admin','Atur / ubah PIN',ubahPin),
+  ...(timMode()?[]:[item('c-manual','list','Ganti mode','Sekarang: Pemeliharaan',gantiMode)]),
   item('c-tema',isDark()?'sun':'moon',isDark()?'Tema terang':'Tema gelap','Ganti tampilan',()=>{THEME.set(isDark()?'light':'dark');applyTheme();renderHome()}),
   h('div',{class:'dfoot'},h('div',null,'Versi aplikasi: '+VERSI),h('div',{style:'margin-top:4px'},'Data tersimpan di HP ini (IndexedDB). Jangan hapus data browser sebelum hasil terkirim.')));
  d.classList.add('on');$('#scrim').classList.add('on')}
 async function pmBersihkan(){const T=S.items.filter(pmTuntas);if(!T.length)return alert('Belum ada rencana yang sudah selesai dan terkirim.');
+ {const gagal=await cekDiServer(T.flatMap(it=>pmRecs(it.rencana_id)));if(gagal){alert(gagal);return}}
  if(!confirm('Hapus '+T.length+' rencana yang sudah TERKIRIM dari HP ini, beserta foto dan laporannya?\n\nData di DIGARDU tidak terpengaruh. Tidak bisa dibatalkan.'))return;
  for(const it of T){for(const r of pmRecs(it.rencana_id)){for(const p of await photosOf(r.id))await dbDel('photos',p.pid);await dbDel('records',r.id)}}
  S.items=S.items.filter(i=>!T.includes(i));await dbPut('meta',S.items,'rencana');pmHome();alert('Selesai. '+T.length+' rencana dibersihkan.')}
 function pmKirimSekarang(){const q=pmQueue();if(!q.length)return alert('Belum ada laporan selesai yang belum dikirim.');pmKirimUtama(q)}
 function pmKirimZip(){const q=pmQueue();if(!q.length)return alert('Belum ada laporan selesai yang belum dikirim.');pmKirim(q)}
 
+/* ===== tim akun, pengingat, verifikasi server ===== */
+function timMode(){const t=SRV.cfg&&SRV.cfg.tim;return t==='Inspeksi'?'inspeksi':t==='Pemeliharaan'?'pemeliharaan':''}
+function pengingat(q,fn){if(!q.length)return null;return h('div',{class:'card',style:'border-left:4px solid #d97706'},h('div',{class:'gname'},'Ada '+q.length+' laporan belum terkirim'),h('p',{class:'mut',style:'margin:4px 0 8px'},'Kirim sekarang selagi ada sinyal, supaya tidak hilang kalau HP rusak atau data browser terhapus.'),h('button',{class:'btn',type:'button',onclick:fn},ico('send',18),'Kirim sekarang'))}
+/* pastikan SETIAP laporan memang sudah ada di server sebelum dihapus dari HP; gagal/ tak terhubung = tidak dihapus */
+async function cekDiServer(recs){const r2=recs.filter(r=>r.status==='selesai');if(!r2.length)return'';
+ if(!(SRV.cfg&&SRV.cfg.url&&SRV.cfg.user))return'TIDAK DIHAPUS: server DIGARDU belum diatur di HP ini, jadi belum bisa dipastikan datanya sudah ada di server.';
+ try{for(const r of r2){const d=await srvUlang({aksi:'cek',id:r.id},30000);if(!d||!d.ada)return'TIDAK DIHAPUS: ada laporan yang belum ditemukan di server DIGARDU ('+((r.gardu&&r.gardu.nama)||r.id)+'). Kirim ulang dulu.'}}
+ catch(e){return'TIDAK DIHAPUS: tidak bisa memastikan data sudah ada di server.\n'+e.message}return''}
+
 /* ===== mode aplikasi ===== */
 async function pilihMode(){app.innerHTML='';app.append(topBar('Inspeksi dan Pemeliharaan',null,false));
  const pilih=async m=>{S.mode=m;await dbPut('meta',m,'mode');renderHome()};
- app.append(h('main',null,h('div',{class:'card'},h('div',{class:'gname'},'Aplikasi ini dipakai tim mana?'),h('p',{class:'mut'},'Pilihan ini disimpan di HP ini. Bisa diganti nanti lewat Menu, dijaga PIN admin.')),
+ app.append(h('main',null,h('div',{class:'card'},h('div',{class:'gname'},'Aplikasi ini dipakai tim mana?'),h('p',{class:'mut'},'Pilihan ini disimpan di HP ini. Bisa diganti nanti lewat Menu. Kalau akun DIGARDU Anda sudah ditetapkan ke satu tim, mode terkunci otomatis setelah login di menu Server DIGARDU.')),
   h('button',{class:'btn',type:'button',style:'width:100%;margin-bottom:10px',onclick:()=>pilih('inspeksi')},ico('clip',18),'Tim Inspeksi'),
   h('button',{class:'btn',type:'button',style:'width:100%',onclick:()=>pilih('pemeliharaan')},ico('refresh',18),'Tim Pemeliharaan')))}
-async function gantiMode(){if(!(await adminOk('ganti mode aplikasi',true)))return;
+async function gantiMode(){if(timMode())return alert('Mode HP ini dikunci mengikuti akun DIGARDU (tim '+SRV.cfg.tim+'). Ubah di Kelola Pengguna bila perlu.');
  const ke=S.mode==='pemeliharaan'?'inspeksi':'pemeliharaan';
  if(!confirm('Ganti ke mode '+(ke==='inspeksi'?'INSPEKSI':'PEMELIHARAAN')+'?\n\nData di HP ini tidak dihapus, hanya tampilannya yang berganti.'))return;
  S.mode=ke;await dbPut('meta',ke,'mode');renderHome()}
