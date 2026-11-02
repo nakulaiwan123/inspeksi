@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Inspeksi Gardu</title>
+<title>Inspeksi dan Pemeliharaan Gardu</title>
 <style>
 :root{color-scheme:light;--bg:#eef3f8;--halo:rgba(14,165,233,.14);--card:rgba(255,255,255,.94);--card2:#f1f6fb;--dlg:#fff;--tx:#0f172a;--mut:#475569;--bd:rgba(2,132,199,.28);--bd2:rgba(2,132,199,.55);--pri:#0284c7;--pri2:#2563eb;--prifg:#fff;--acc:#0369a1;--secbg:linear-gradient(135deg,rgba(14,165,233,.07),rgba(59,130,246,.13));--ok:#059669;--okfg:#fff;--okt:#047857;--bad:#c2410c;--badfg:#fff;--badt:#9a3412;--red:#dc2626;--redfg:#fff;--inp:#fff;--inpbd:#b6c4d6;--ring:rgba(2,132,199,.22);--glow:none;--shadow:0 8px 20px -10px rgba(15,23,42,.28);--grid:rgba(100,116,139,.10);--hdr:rgba(255,255,255,.9);--warnbg:#fff4e5;--warnfg:#7a4300;--warnbd:#f0c27b}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#030712;--halo:rgba(0,242,254,.16);--card:rgba(17,24,39,.84);--card2:#0b1220;--dlg:#0b1220;--tx:#f1f5f9;--mut:#a3b0c2;--bd:rgba(0,242,254,.2);--bd2:rgba(0,242,254,.45);--pri:#22d3ee;--pri2:#3b82f6;--prifg:#031018;--acc:#22d3ee;--secbg:linear-gradient(135deg,rgba(0,242,254,.08),rgba(79,172,254,.16));--ok:#10b981;--okfg:#03140d;--okt:#34d399;--bad:#fb923c;--badfg:#1a0a00;--badt:#fdba74;--red:#f87171;--redfg:#1f0505;--inp:rgba(3,7,18,.88);--inpbd:rgba(100,116,139,.6);--ring:rgba(34,211,238,.28);--glow:0 0 10px rgba(0,242,254,.5),0 0 22px rgba(0,242,254,.25);--shadow:0 0 22px rgba(0,0,0,.5),inset 0 0 14px rgba(0,242,254,.04);--grid:rgba(100,116,139,.14);--hdr:rgba(8,12,22,.86);--warnbg:rgba(245,158,11,.12);--warnfg:#fcd34d;--warnbd:rgba(245,158,11,.4)}}
@@ -110,10 +110,11 @@ main.hastab{padding-bottom:96px}
 </head>
 <body>
 <div id="app"></div>
+<input type="file" id="fpaket" accept=".json,application/json,text/plain" style="display:none">
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
-const VERSI='2 Nov 2026 · v8.1 (bersihkan daftar)';
+const VERSI='2 Nov 2026 · v9 (inspeksi + pemeliharaan)';
 /* ================= util ================= */
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){const v=attrs[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(k,v===true?'':v);}for(const c of kids.flat(2)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;}
 const ICON={bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',gauge:'<path d="M12 14l4-4"/><path d="M3.3 17a10 10 0 1 1 17.4 0"/>',inbox:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'};
@@ -187,11 +188,11 @@ const dbDel=(s,k)=>dbx(s,'readwrite',o=>o.delete(k));
 const photosOf=async rid=>(await dbx('photos','readonly',o=>o.index('rid').getAll(rid))).map(p=>{if(!p.blob&&p.buf)p.blob=new Blob([p.buf],{type:p.type||'image/jpeg'});return p});
 
 /* ================= state ================= */
-const S={tugas:[],records:[],petugas:'',area:'',log:[]};
+const S={tugas:[],records:[],prec:[],items:[],jenis:[],mode:'',petugas:'',area:'',log:[]};
 const splitPic=s=>String(s||'').split(/\s*(?:\/|&|,|;|\+|\bdan\b)\s*/i).map(x=>x.trim()).filter(Boolean);
 // nama petugas di BA = PIC gardu dari penugasan; kalau tidak ada, pakai nama terakhir yang diketik di form
 const petOf=t=>{const n=splitPic(t&&t.pic);return n.length?n.join(' & '):(S.petugas||'')};
-async function loadState(){S.tugas=(await dbGet('meta','tugas'))||[];S.petugas=(await dbGet('meta','petugas'))||'';S.log=(await dbGet('meta','log'))||[];S.area=(await dbGet('meta','area'))||'';S.records=await dbAll('records')}
+async function loadState(){S.tugas=(await dbGet('meta','tugas'))||[];S.petugas=(await dbGet('meta','petugas'))||'';S.log=(await dbGet('meta','log'))||[];S.area=(await dbGet('meta','area'))||'';const all=await dbAll('records');S.records=all.filter(r=>r.form!=='pemeliharaan');S.prec=all.filter(r=>r.form==='pemeliharaan');S.items=(await dbGet('meta','rencana'))||[];S.jenis=(await dbGet('meta','jenis'))||PM_JENIS_DEF;S.mode=(await dbGet('meta','mode'))||'';if(!S.mode&&(S.tugas.length||S.records.length))S.mode='inspeksi'}
 const saveTugas=()=>dbPut('meta',S.tugas,'tugas');
 const saveRec=r=>{r.updated=new Date().toISOString();return dbPut('records',r)};
 
@@ -331,11 +332,12 @@ const kirimQueue=()=>S.records.filter(r=>r.status==='selesai'&&!r.sentAt);
 function kirimSekarang(){const q=kirimQueue();if(!q.length)return alert('Belum ada inspeksi selesai yang belum dikirim.');kirimUtama(q)}
 function kirimZipSekarang(){const q=kirimQueue();if(!q.length)return alert('Belum ada inspeksi selesai yang belum dikirim.');kirim(q)}
 function closeMenu(){const d=$('#drawer');if(d){d.classList.remove('on');$('#scrim').classList.remove('on')}}
-function openMenu(){let d=$('#drawer');
+function openMenu(){return S.mode==='pemeliharaan'?pmMenu():openMenuInspeksi()}
+function openMenuInspeksi(){let d=$('#drawer');
  if(!d){document.body.append(h('div',{id:'scrim',onclick:closeMenu}),h('aside',{id:'drawer','aria-label':'Menu'}));d=$('#drawer');addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()})}
  const item=(cls,icon,label,sub,fn)=>h('button',{class:'di',type:'button',onclick:async()=>{closeMenu();await fn()}},h('span',{class:'ico '+cls},ico(icon,19)),h('span',{style:'flex:1;min-width:0'},label,sub?h('small',null,sub):null));
  d.innerHTML='';
- d.append(h('div',{class:'dh'},h('div',{class:'logo'},ico('bolt',20)),h('div',null,h('b',null,'Inspeksi Gardu'),h('small',null,'PETUGAS LAPANGAN'))),
+ d.append(h('div',{class:'dh'},h('div',{class:'logo'},ico('bolt',20)),h('div',null,h('b',null,'Inspeksi dan Pemeliharaan Gardu'),h('small',null,'MODE: TIM INSPEKSI'))),
   h('div',{class:'dsep'},'Penugasan'),
   item('c-impor','inbox','Impor penugasan','Dari file Excel kantor',()=>{const f=$('#fcsv');f.value='';f.click()}),
   item('c-manual','plus','Gardu manual','Gardu di luar penugasan',async()=>addManual()),
@@ -344,6 +346,7 @@ function openMenu(){let d=$('#drawer');
   item('c-kirim','send','Server DIGARDU',SRV.cfg&&SRV.cfg.url?('Kirim langsung · '+(SRV.cfg.user||'belum login')):'Belum diatur (kirim lewat zip)',srvDialog),
   item('c-impor','inbox','Kirim paket zip','Cadangan lewat WhatsApp',kirimZipSekarang),
   h('div',{class:'dsep'},'Pengaturan'),
+  item('c-manual','list','Ganti mode','Sekarang: Inspeksi',gantiMode),
   item('c-pin','lock','PIN admin','Atur / ubah PIN',ubahPin),
   item('c-tema',isDark()?'sun':'moon',isDark()?'Tema terang':'Tema gelap','Ganti tampilan',()=>{THEME.set(isDark()?'light':'dark');applyTheme();renderHome()}),
   h('div',{class:'dfoot'},h('div',null,'Versi aplikasi: '+VERSI),h('div',{style:'margin-top:4px'},'Data tersimpan di HP ini (IndexedDB). Jangan hapus data browser sebelum paket terkirim.')));
@@ -372,7 +375,8 @@ function latestRec(garduId,form){const l=S.records.filter(r=>r.gardu.id===garduI
 const LF={q:'',tgl:'',st:'',n:30,tab:'aktif'},PAGE=30;
 function terkirimT(t){if(stCode(t)!=='lengkap')return false;const rs=[latestRec(t.id,'tiang')||latestRec(t.id,'beton')];if(t.jenis!=='tm')rs.push(latestRec(t.id,'beban'));return rs.every(r=>r&&r.sentAt)}
 function stCode(t){const ins=latestRec(t.id,'tiang')||latestRec(t.id,'beton'),b=latestRec(t.id,'beban');const iok=ins&&ins.status==='selesai',bok=b&&b.status==='selesai';if(iok&&(t.jenis==='tm'||bok))return'lengkap';return(ins||b)?'proses':'belum'}
-async function renderHome(){await loadState();app.innerHTML='';
+async function renderHome(){await loadState();if(!S.mode)return pilihMode();return S.mode==='pemeliharaan'?pmHome():renderHomeInspeksi()}
+async function renderHomeInspeksi(){app.innerHTML='';
  {let ch=false;for(const t of S.tugas){if(t.jenis&&!t.jenisOleh&&!t.jenisMaster&&!t.manual&&!S.records.some(r=>r.gardu.id===t.id)){t.jenis='';ch=true}}if(ch)await saveTugas()}
  app.append(topBar('Inspeksi Gardu',null,true));
  const m=h('main',{class:'hastab'});
@@ -674,7 +678,289 @@ async function kirimLangsung(recs){
   zipBtn.style.display='';zipBtn.onclick=()=>{dlg.close();kirim(gagalRecs)}}
  tutup.disabled=false}
 
+/* ================= MODE PEMELIHARAAN ================= */
+const PM_JENIS_DEF=['Pembersihan','Perbaikan sambungan / terminasi','Perbaikan duck kabel / drainase','Perbaikan bangunan dan pagar','Pengecatan','Pengecekan / penyesuaian fuse','Perbaikan grounding','Flushing trafo','Pemeliharaan trafo (lainnya)','Pemeliharaan sistematis','Lainnya'];
+const PM_JENIS_TRAFO=['Flushing trafo','Pemeliharaan trafo (lainnya)'];
+const PM_SISTEMATIS='Pemeliharaan sistematis';
+const PM_KATA=['Pembersihan selesai','Sambungan dikencangkan','Fuse diganti','Grounding diperbaiki','Pengecatan selesai','Duck kabel dibersihkan','Pagar diperbaiki','Flushing selesai','Kondisi normal kembali','Beban normal'];
+/* Form Pemeliharaan Sistematis GD Beton (FM-bright-SBU-DI-ST-02-07 B): nomor item sama dengan form inspeksi beton. Pilihan tindakan dibaca dari form kertas; "Lainnya" lewat kolom catatan. */
+const DB_=['Dibersihkan'],GS=['Dibersihkan','Dilapis sealant','Ganti seal','Kencangkan baut'],LP=['Dibersihkan','Dilapis / dimempul'];
+const PM_SIS=[
+ {g:'TRAFO 20 kV',items:[{n:1,t:'Level minyak',o:['Isi ulang','Ganti oli','Flushing oli']},{n:2,t:'Kebocoran minyak',o:GS},{n:3,t:'Seal body trafo',o:GS},{n:4,t:'Seal bushing TM/TR',o:GS},{n:5,t:'Bushing TM/TR',o:['Dibersihkan','Kencangkan baut','Ganti seal']},{n:6,t:'Kondisi fisik trafo',o:['Dibersihkan','Ganti trafo']}]},
+ {g:'KUBIKEL 20 kV',items:[{n:7,t:'Busbar',o:['Dibersihkan','Diganti']},{n:8,t:'Terminasi (ID) TM',o:['Dibersihkan','Diganti']},{n:9,t:'Heater',o:['Dibersihkan','Diganti','Tidak ada / kubikel fully insulated']},{n:10,t:'Body',o:['Dibersihkan','Diganti']},{n:11,t:'Lampu indikator',o:['Dibersihkan','Diganti']},{n:12,t:'Fuse TM',o:['Dibersihkan','Diganti']}]},
+ {g:'PANEL TR',items:[{n:13,t:'Fuse base',o:['Dibersihkan','Diganti']},{n:14,t:'Kesesuaian ampere fuse TR',o:['Disesuaikan']},{n:15,t:'Sambungan busbar',o:['Dibersihkan','Kencangkan baut']},{n:16,t:'Single core TR',o:['Dibersihkan','Kencangkan baut','Diganti','Ditambah']}]},
+ {g:'EARTH FAULT INDIKATOR (EFI)',items:[{n:17,t:'Lampu indikator',o:['Perbaikan','Ganti baru']},{n:18,t:'Power suplai & instalasi',o:['Perbaikan','Ganti baru']}]},
+ {g:'BANGUNAN GARDU & PAGAR',items:[{n:19,t:'Duck atap',o:['Dibersihkan','Dilapis / dimempul','Ganti atap duck']},{n:20,t:'Lantai kerja dalam',o:['Dibersihkan','Dilapis / dimempul','Cor ulang lantai']},{n:21,t:'Lantai rabat luar',o:['Dibersihkan','Dilapis / dimempul','Cor ulang lantai']},{n:22,t:'Cat bangunan',o:['Dibersihkan','Cat ulang']},{n:23,t:'Duck kabel TM/TR',o:['Disedot','Tutup lubang air','Isi pasir cor']},{n:24,t:'Ventilasi',o:['Dibersihkan','Cat ulang','Ganti ventilasi','Instalasi ulang']},{n:25,t:'Lamp & instalasi',o:['Diperbaiki','Ganti bola lampu','Instalasi ulang']},{n:26,t:'Pagar bangunan',o:['Dipasang baru','Tidak ada']},{n:27,t:'Cat pagar',o:['Cat ulang']},{n:28,t:'Engsel pintu gardu',o:['Dibersihkan','Ganti engsel','Dilas']},{n:29,t:'Dudukan gembok gardu',o:['Dibersihkan','Dilas','Ganti dudukan gembok']},{n:30,t:'Lingkungan gardu',o:['Dibersihkan']},{n:31,t:'Exhaust fan',o:['Pasang baru','Diganti baru']},{n:32,t:'Suhu dalam gardu',o:['Pasang AC','Penambahan heater']}]},
+ {g:'GROUNDING',items:[{n:33,t:'Grounding',o:['Sambungan dikencangkan','Diganti / tarik baru','Di-bor ulang'],ohm:true}]}
+];
+const PM_SIS_ITEM={};PM_SIS.forEach(g=>g.items.forEach(i=>{PM_SIS_ITEM[i.n]=i}));
+const PM_BA=['Kubikel IM/IS','Kubikel VT','Kubikel CB','Kubikel TP3 OM','Kubikel RMU','Trafo distribusi','Rak TR','PT','CT'];
+const PM_HARI=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'],PM_BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const pmTgl=s=>{const m=/^(\d{4})-(\d\d)-(\d\d)$/.exec(s||'');if(!m)return s||'';const d=new Date(+m[1],+m[2]-1,+m[3]);return PM_HARI[d.getDay()]+', '+(+m[3])+' '+PM_BLN[+m[2]-1]+' '+m[1]};
+const pmJamT=(a,b)=>String(a||'').replace(':','.')+' - '+String(b||'').replace(':','.');
+const pmIsoOk=s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||''));
+/* jam 24 jam: ketik 0910 -> 09:10 */
+const pmNormJam=v=>{let d=String(v||'').replace(/[^\d]/g,'');if(!d)return'';if(d.length===3)d='0'+d;if(d.length<4)return String(v);const hh=+d.slice(0,2),mm=+d.slice(2,4);return hh<=23&&mm<=59?d.slice(0,2)+':'+d.slice(2,4):String(v)};
+const pmJamOk=v=>!v||/^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+function pmJamInput(){const i=h('input',{type:'text',inputmode:'numeric',maxlength:'5',placeholder:'HH:MM',autocomplete:'off'});
+ i.addEventListener('input',()=>{const d=i.value.replace(/[^\d]/g,'').slice(0,4);i.value=d.length>2?d.slice(0,2)+':'+d.slice(2):d});
+ i.addEventListener('blur',()=>{i.value=pmNormJam(i.value);i.dispatchEvent(new Event('input'))});return i}
+
+const pmRecs=rid=>S.prec.filter(r=>r.rencana_id===rid).sort((a,b)=>String(b.created).localeCompare(String(a.created)));
+const pmRec=rid=>pmRecs(rid)[0];
+const pmQueue=()=>S.prec.filter(r=>r.status==='selesai'&&!r.sentAt);
+const pmTuntas=it=>{const r=pmRec(it.rencana_id);return !!(r&&r.sentAt&&r.hasil!=='ditunda')};
+const pmId=rid=>'pm-'+String(rid).toLowerCase().replace(/[^a-z0-9]/g,'')+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const pmBeton=it=>/beton/i.test(String(it.jenis_gardu||''));
+function pmTebakJenis(it){const p=String(it.pekerjaan||'').toLowerCase();const m=[[/flushing/,'Flushing trafo'],[/cat\b|pengecatan/,'Pengecatan'],[/grounding|pentanahan/,'Perbaikan grounding'],[/pagar|bangunan/,'Perbaikan bangunan dan pagar'],[/duck|drainase/,'Perbaikan duck kabel / drainase'],[/fuse/,'Pengecekan / penyesuaian fuse'],[/sambung|terminasi|terminating/,'Perbaikan sambungan / terminasi'],[/bersih|pembersihan/,'Pembersihan']];
+ for(const [re,j] of m)if(re.test(p)&&S.jenis.includes(j))return j;return S.jenis.includes('Lainnya')?'Lainnya':S.jenis[0]}
+function pmBaBaru(it){const rows=PM_BA.map(n=>({nama:n,jumlah:'',type:'',merk:'',noseri:'',kap:''}));const tr=it.trafo||[];
+ if(tr.length){const r=rows[5];r.jumlah=String(tr.length);r.merk=[...new Set(tr.map(t=>t.merk).filter(Boolean))].join(' / ');r.noseri=tr.map(t=>t.no_seri).filter(Boolean).join(' / ');r.kap=tr.map(t=>t.kapasitas?t.kapasitas+' kVA':'').filter(Boolean).join(' / ')}
+ return{jenis_gardu:/\btm\b|pelanggan/i.test(String(it.jenis_gardu||''))?'tm':'distribusi',rows,realisasi:'',pengawas:it.pengawas||''}}
+function pmNewRec(it){const put={};(it.temuan||[]).forEach(t=>put[t.temuan_id]='selesai');const sis=pmBeton(it);
+ return {id:pmId(it.rencana_id),grup:it.rencana_id,rev:1,form:'pemeliharaan',status:'draf',created:new Date().toISOString(),tanggal:today(),rencana_id:it.rencana_id,hasil:'terlaksana',alasan:'',alasan_tanpa:'',
+  gardu:{id:it.gardu_id,nama:it.gardu,lokasi:it.alamat||'',kode:it.kode||''},petugas:S.petugas||it.rekanan||'',surat:false,jam_mulai:'',jam_selesai:'',jenis:sis?PM_SISTEMATIS:pmTebakJenis(it),uraian:'',ket:'',putusan:put,temuan_baru:[],aset_ids:[],gps:null,
+  sis,cek:{},ekstra:'',ohm:'',kwh:'',merk_kwh:'',ratio_ct:'',ba:pmBaBaru(it)}}
+function pmRingkasSis(rec){const out=[];Object.keys(rec.cek||{}).map(Number).sort((a,b)=>a-b).forEach(n=>{const c=rec.cek[n],it=PM_SIS_ITEM[n];if(!it||!c||(!(c.t||[]).length&&!String(c.c||'').trim()))return;out.push(n+'. '+it.t+': '+[...(c.t||[]),String(c.c||'').trim()].filter(Boolean).join(', '))});
+ if(String(rec.ohm||'').trim())out.push('Nilai grounding '+String(rec.ohm).trim()+' Ω');return out.join('; ')}
+function pmCekLap(rec){return Object.keys(rec.cek||{}).map(Number).sort((a,b)=>a-b).map(n=>({no:n,item:(PM_SIS_ITEM[n]||{}).t||'',tindakan:(rec.cek[n].t||[]).slice(),catatan:String(rec.cek[n].c||'').trim()})).filter(x=>x.tindakan.length||x.catatan)}
+
+/* ===== impor paket rencana (.json dari DIGARDU) ===== */
+async function pmImpor(file){try{const p=JSON.parse(await file.text());
+  if(!p||p.format!=='pemeliharaan-paket'||!Array.isArray(p.items))throw new Error('Ini bukan paket rencana pemeliharaan dari DIGARDU.');
+  let baru=0,ubah=0;for(const x of p.items){if(!x||!x.rencana_id||!x.gardu_id)continue;const i=S.items.findIndex(y=>y.rencana_id===x.rencana_id);if(i>=0){S.items[i]=Object.assign({},S.items[i],x);ubah++}else{S.items.push(x);baru++}}
+  if(Array.isArray(p.jenis)&&p.jenis.length){S.jenis=[...new Set([...p.jenis,PM_SISTEMATIS])];await dbPut('meta',S.jenis,'jenis')}
+  await dbPut('meta',S.items,'rencana');alert('Paket diimpor: '+baru+' rencana baru, '+ubah+' diperbarui.');pmHome()}
+ catch(e){alert('Gagal impor: '+e.message)}}
+function pmPilihPaket(){const f=$('#fpaket');f.value='';f.click()}
+
+/* ===== beranda ===== */
+const PM_LF={q:'',tab:'aktif'};
+function pmStatus(it){const r=pmRec(it.rencana_id);if(!r)return['Belum dikerjakan',''];const hs={terlaksana:'Terlaksana',ditunda:'Ditunda',batal:'Batal'}[r.hasil]||'';
+ if(r.sentAt)return['Terkirim · '+hs,'ok'];if(r.status==='selesai')return['Siap kirim · '+hs,'ok'];return['Draft','draft']}
+function pmTabs(){const nA=S.items.filter(i=>!pmTuntas(i)).length,nS=S.items.length-nA,nP=pmQueue().length;
+ const tb=(cls,icon,label,on,fn,badge)=>h('button',{class:'tb '+cls+(on?' on':''),type:'button','aria-label':label,'aria-current':on?'page':null,onclick:fn},ico(icon,22),label,badge?h('span',{class:'n'},String(badge)):null);
+ return h('nav',{class:'tabbar','aria-label':'Navigasi utama'},
+  tb('c-gardu','list','Rencana ('+nA+')',PM_LF.tab!=='selesai',()=>{PM_LF.tab='aktif';pmHome()}),
+  tb('c-terkirim','check','Selesai ('+nS+')',PM_LF.tab==='selesai',()=>{PM_LF.tab='selesai';pmHome()}),
+  tb('c-kirim','send','Kirim',false,pmKirimSekarang,nP),
+  tb('c-menu','menu','Menu',false,pmMenu))}
+async function pmHome(){await loadState();app.innerHTML='';app.append(topBar('Pemeliharaan Gardu',null,true));
+ const m=h('main',{class:'hastab'});
+ if(!S.items.length){m.append(h('div',{class:'card'},h('div',{class:'gname'},'Belum ada rencana'),h('p',{class:'mut'},'Minta paket rencana (file .json) dari kantor lewat WhatsApp, simpan di HP ini, lalu impor.'),h('button',{class:'btn',type:'button',onclick:pmPilihPaket},ico('inbox',18),'Impor paket rencana')));app.append(m,pmTabs());return}
+ const q=h('input',{type:'text',placeholder:'Cari gardu, kode, atau pekerjaan',value:PM_LF.q,oninput:e=>{PM_LF.q=e.target.value;debounce(()=>draw(),250)}});m.append(h('div',{class:'fil'},q));
+ const box=h('div');m.append(box);
+ function draw(){box.innerHTML='';const sel=PM_LF.tab==='selesai',qq=PM_LF.q.toLowerCase();
+  const L=S.items.filter(i=>pmTuntas(i)===sel&&(!qq||(i.gardu+' '+i.kode+' '+i.pekerjaan+' '+i.rencana_id).toLowerCase().includes(qq)));
+  if(!L.length){box.append(h('div',{class:'card mut'},sel?'Belum ada yang selesai dan terkirim.':'Tidak ada rencana yang cocok.'));return}
+  L.sort((a,b)=>(a.tanggal+a.jam_mulai).localeCompare(b.tanggal+b.jam_mulai));let last='';
+  for(const it of L){if(it.tanggal!==last){last=it.tanggal;const lw=!sel&&it.tanggal<today();box.append(h('h2',null,pmTgl(it.tanggal)+(it.tanggal===today()?' · hari ini':'')+(lw?' · lewat jadwal':'')))}
+   const [st,cls]=pmStatus(it);
+   box.append(h('div',{class:'card',style:'cursor:pointer',role:'button',tabindex:'0',onclick:()=>pmForm(it.rencana_id)},
+    h('div',{class:'sech'},h('div',{class:'gname'},it.gardu),h('span',{class:'badge '+cls},st)),
+    h('div',{class:'gmeta'},(it.kode||'')+(it.area?' · '+it.area:'')+' · '+it.rencana_id),
+    h('div',{style:'margin-top:6px'},pmJamT(it.jam_mulai,it.jam_selesai)+' · '+it.pekerjaan),
+    it.lokasi_padam&&it.lokasi_padam!==it.gardu?h('div',{class:'mut'},'Padam: '+it.lokasi_padam):null,
+    it.temuan&&it.temuan.length?h('div',{class:'mut'},it.temuan.length+' temuan dalam rencana'):null))}}
+ draw();app.append(m,pmTabs())}
+
+function pmMenu(){let d=$('#drawer');
+ if(!d){document.body.append(h('div',{id:'scrim',onclick:closeMenu}),h('aside',{id:'drawer','aria-label':'Menu'}));d=$('#drawer');addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()})}
+ const item=(cls,icon,label,sub,fn)=>h('button',{class:'di',type:'button',onclick:async()=>{closeMenu();await fn()}},h('span',{class:'ico '+cls},ico(icon,19)),h('span',{style:'flex:1;min-width:0'},label,sub?h('small',null,sub):null));
+ d.innerHTML='';
+ d.append(h('div',{class:'dh'},h('div',{class:'logo'},ico('bolt',20)),h('div',null,h('b',null,'Inspeksi dan Pemeliharaan Gardu'),h('small',null,'MODE: TIM PEMELIHARAAN'))),
+  h('div',{class:'dsep'},'Rencana'),
+  item('c-impor','inbox','Impor paket rencana','File .json dari kantor',pmPilihPaket),
+  item('c-pin','trash','Bersihkan yang sudah terkirim','Hapus rencana tuntas dari HP',pmBersihkan),
+  h('div',{class:'dsep'},'Pengiriman'),
+  item('c-kirim','send','Server DIGARDU',SRV.cfg&&SRV.cfg.url?('Kirim langsung · '+(SRV.cfg.user||'belum login')):'Belum diatur (kirim lewat zip)',srvDialog),
+  item('c-impor','inbox','Kirim paket zip','Cadangan lewat WhatsApp',pmKirimZip),
+  h('div',{class:'dsep'},'Pengaturan'),
+  item('c-manual','list','Ganti mode','Sekarang: Pemeliharaan',gantiMode),
+  item('c-pin','lock','PIN admin','Atur / ubah PIN',ubahPin),
+  item('c-tema',isDark()?'sun':'moon',isDark()?'Tema terang':'Tema gelap','Ganti tampilan',()=>{THEME.set(isDark()?'light':'dark');applyTheme();renderHome()}),
+  h('div',{class:'dfoot'},h('div',null,'Versi aplikasi: '+VERSI),h('div',{style:'margin-top:4px'},'Data tersimpan di HP ini (IndexedDB). Jangan hapus data browser sebelum hasil terkirim.')));
+ d.classList.add('on');$('#scrim').classList.add('on')}
+async function pmBersihkan(){const T=S.items.filter(pmTuntas);if(!T.length)return alert('Belum ada rencana yang sudah selesai dan terkirim.');
+ if(!confirm('Hapus '+T.length+' rencana yang sudah TERKIRIM dari HP ini, beserta foto dan laporannya?\n\nData di DIGARDU tidak terpengaruh. Tidak bisa dibatalkan.'))return;
+ for(const it of T){for(const r of pmRecs(it.rencana_id)){for(const p of await photosOf(r.id))await dbDel('photos',p.pid);await dbDel('records',r.id)}}
+ S.items=S.items.filter(i=>!T.includes(i));await dbPut('meta',S.items,'rencana');pmHome();alert('Selesai. '+T.length+' rencana dibersihkan.')}
+function pmKirimSekarang(){const q=pmQueue();if(!q.length)return alert('Belum ada laporan selesai yang belum dikirim.');pmKirimUtama(q)}
+function pmKirimZip(){const q=pmQueue();if(!q.length)return alert('Belum ada laporan selesai yang belum dikirim.');pmKirim(q)}
+
+/* ===== mode aplikasi ===== */
+async function pilihMode(){app.innerHTML='';app.append(topBar('Inspeksi dan Pemeliharaan',null,false));
+ const pilih=async m=>{S.mode=m;await dbPut('meta',m,'mode');renderHome()};
+ app.append(h('main',null,h('div',{class:'card'},h('div',{class:'gname'},'Aplikasi ini dipakai tim mana?'),h('p',{class:'mut'},'Pilihan ini disimpan di HP ini. Bisa diganti nanti lewat Menu, dijaga PIN admin.')),
+  h('button',{class:'btn',type:'button',style:'width:100%;margin-bottom:10px',onclick:()=>pilih('inspeksi')},ico('clip',18),'Tim Inspeksi'),
+  h('button',{class:'btn',type:'button',style:'width:100%',onclick:()=>pilih('pemeliharaan')},ico('refresh',18),'Tim Pemeliharaan')))}
+async function gantiMode(){if(!(await adminOk('ganti mode aplikasi',true)))return;
+ const ke=S.mode==='pemeliharaan'?'inspeksi':'pemeliharaan';
+ if(!confirm('Ganti ke mode '+(ke==='inspeksi'?'INSPEKSI':'PEMELIHARAAN')+'?\n\nData di HP ini tidak dihapus, hanya tampilannya yang berganti.'))return;
+ S.mode=ke;await dbPut('meta',ke,'mode');renderHome()}
+
+/* ===== form ===== */
+const pmL=t=>h('label',{class:'f'},t);
+async function pmForm(rid,baru){const it=S.items.find(x=>x.rencana_id===rid);if(!it)return pmHome();
+ let rec=baru?null:pmRec(rid);let fresh=false;if(!rec){rec=pmNewRec(it);fresh=true}
+ if(!rec.cek){rec.cek={};rec.ba=rec.ba||pmBaBaru(it)}
+ const locked=rec.status==='selesai',sent=!!rec.sentAt;
+ app.innerHTML='';app.append(topBar(it.gardu,pmHome));
+ const m=h('main'),touch=()=>debounce(()=>saveRec(rec),500),persist=async()=>{if(!S.prec.includes(rec))S.prec.push(rec);await saveRec(rec)};
+ if(fresh)getGps().then(g=>{rec.gps=g});
+ if(!rec.gps&&!fresh)getGps().then(g=>{if(g&&!locked){rec.gps=g;touch()}});
+ const bind=(el,k,o)=>{o=o||rec;el.value=o[k]==null?'':o[k];el.addEventListener('input',()=>{o[k]=el.value;touch()});return el};
+ m.append(h('div',{class:'card'},h('div',{class:'gname'},it.gardu),h('div',{class:'gmeta'},(it.kode||'')+(it.area?' · '+it.area:'')+' · '+it.rencana_id),
+  h('div',{style:'margin-top:8px'},h('b',null,'Jadwal: '),pmTgl(it.tanggal)+', '+pmJamT(it.jam_mulai,it.jam_selesai)),
+  h('div',null,h('b',null,'Pekerjaan: '),it.pekerjaan),it.lokasi_padam?h('div',null,h('b',null,'Lokasi padam: '),it.lokasi_padam):null,
+  it.pengawas?h('div',null,h('b',null,'Pengawas: '),it.pengawas):null,it.rekanan?h('div',null,h('b',null,'Rekanan: '),it.rekanan):null,
+  it.hasil_inspeksi?h('div',{class:'mut',style:'margin-top:6px'},h('b',null,'Hasil inspeksi: '),it.hasil_inspeksi):null,
+  it.ket?h('div',{class:'mut'},h('b',null,'Ket: '),it.ket):null,
+  h('div',{class:'warn',style:'margin-top:8px'},'Padam terjadwal: pastikan pelanggan sudah menerima surat pemberitahuan sebelum pekerjaan dimulai.')));
+ if(locked)m.append(h('div',{class:'card'},h('span',{class:'badge ok'},ico('lock',12),sent?'Terkirim · terkunci':'Selesai · terkunci'),h('p',{class:'mut',style:'margin:8px 0 0'},sent?'Laporan ini sudah terkirim ke DIGARDU.':'Laporan sudah dikunci dan siap dikirim.'),
+  !sent?h('button',{class:'btn sec sm',type:'button',style:'margin-top:8px',onclick:async()=>{if(!confirm('Buka kunci untuk koreksi? Laporan harus diselesaikan lagi sebelum dikirim.'))return;rec.status='draf';await saveRec(rec);pmForm(rid)}},'Buka kunci untuk koreksi'):null,
+  sent&&rec.hasil==='ditunda'?h('button',{class:'btn sm',type:'button',style:'margin-top:8px',onclick:()=>pmForm(rid,true)},'Buat laporan baru (kerjakan lagi)'):null));
+ const fs=h('fieldset',{disabled:locked});const sec=h('div');
+ const hasilBox=h('div',{class:'chips'});
+ for(const [v,t] of [['terlaksana','Terlaksana'],['ditunda','Ditunda'],['batal','Batal']]){const i=h('input',{type:'radio',name:'hasil',value:v,onchange:()=>{rec.hasil=v;touch();isi()}});if(rec.hasil===v)i.checked=true;hasilBox.append(h('label',null,i,h('span',{class:'chip '+(v==='terlaksana'?'good':'bad')},t)))}
+ fs.append(h('div',{class:'card'},pmL('Status pekerjaan'),hasilBox,pmL('Tanggal'),bind(h('input',{type:'date',max:today()}),'tanggal')),sec);
+ function fotoBox(ref,label,wajib){const box=h('div',{class:'thumbs'}),note=h('div',{class:'mut',style:'min-height:18px'});
+  const mk=()=>{persist();return{rec,ref,label,note,after:()=>fillThumbs(box,rec,ref,locked)}};
+  const c=h('div',{class:'card'},pmL(label+(wajib?' (minimal 1)':' (opsional)')),locked?null:h('div',{class:'row'},photoBtn('📷 Foto',false,mk),photoBtn('🖼 Galeri',true,mk)),note,box);fillThumbs(box,rec,ref,locked);return c}
+ function ceki(v,ph,k,o){const e=h('input',{type:'text',placeholder:ph,autocomplete:'off'});return bind(e,k,o)}
+ function checklist(){const wrap=h('div');
+  wrap.append(h('div',{class:'card'},h('div',{class:'gname'},'Form pemeliharaan sistematis'),h('div',{class:'mut'},'FM-bright-SBU-DI-ST-02-07 B · gardu beton. Centang tindakan yang dikerjakan per item. Item yang tidak disentuh dikosongkan saja.')));
+  const temuanNo={};(it.temuan||[]).forEach(t=>{if(t.no)(temuanNo[t.no]=temuanNo[t.no]||[]).push(t)});
+  for(const g of PM_SIS){const det=h('details',{class:'card'});const jml=()=>g.items.reduce((s,i)=>s+(((rec.cek[i.n]||{}).t||[]).length>0||String((rec.cek[i.n]||{}).c||'').trim()?1:0),0);
+   const sum=h('summary',{style:'font-weight:700;cursor:pointer'},g.g+' ');const bd=h('span',{class:'badge'},jml()+'/'+g.items.length);sum.append(bd);det.append(sum);
+   if(g.items.some(i=>temuanNo[i.n])||jml())det.open=true;
+   for(const i of g.items){const c=rec.cek[i.n]=rec.cek[i.n]||{t:[],c:''};const row=h('div',{class:'item'});
+    row.append(h('div',{class:'t'},i.n+'. '+i.t));
+    (temuanNo[i.n]||[]).forEach(t=>row.append(h('div',{class:'warn',style:'margin-bottom:6px'},'Temuan inspeksi: '+[t.kondisi,t.nilai,t.catatan].filter(Boolean).join(', '))));
+    const chips=h('div',{class:'chips'});
+    for(const o of i.o){const x=h('input',{type:'checkbox'});x.checked=c.t.includes(o);x.onchange=()=>{c.t=c.t.filter(z=>z!==o);if(x.checked)c.t.push(o);touch();bd.textContent=jml()+'/'+g.items.length};chips.append(h('label',null,x,h('span',{class:'chip good'},o)))}
+    row.append(chips);
+    if(i.ohm){row.append(pmL('Nilai ukur grounding (Ω)'),bind(h('input',{type:'text',inputmode:'decimal',placeholder:'mis. 6,06'}),'ohm'))}
+    row.append(h('div',{style:'height:6px'}),(()=>{const e=h('input',{type:'text',placeholder:'Tindakan lain / hasil / saran (opsional)',autocomplete:'off'});e.value=c.c||'';e.addEventListener('input',()=>{c.c=e.value;touch();bd.textContent=jml()+'/'+g.items.length});return e})());
+    det.append(row)}
+   wrap.append(det)}
+  wrap.append(h('div',{class:'card'},pmL('Catatan lain'),pmL2('KWH pantau terpasang'),bind(h('input',{type:'text'}),'kwh'),pmL2('Merk KWH / modem'),bind(h('input',{type:'text'}),'merk_kwh'),pmL2('Ratio CT'),bind(h('input',{type:'text'}),'ratio_ct'),pmL2('Catatan tambahan (opsional)'),bind(h('textarea',{rows:'3'}),'ekstra')));
+  return wrap}
+ function pmL2(t){return h('div',{class:'mut',style:'margin-top:8px'},t)}
+ function baperalatan(){const b=rec.ba,c=h('details',{class:'card'});c.append(h('summary',{style:'font-weight:700;cursor:pointer'},'BA pemeriksaan peralatan gardu (FM-bright-SBU-DIST-02-03)'));
+  c.append(h('div',{class:'mut',style:'margin:6px 0'},'Diisi di hari pemeliharaan yang sama. Kosongkan baris yang tidak ada.'),pmL('Jenis gardu'));
+  const js=h('select',null,[['distribusi','Gardu distribusi'],['tm','Gardu pelanggan TM']].map(o=>h('option',{value:o[0]},o[1])));bind(js,'jenis_gardu',b);c.append(js);
+  b.rows.forEach((r,i)=>{c.append(h('div',{class:'jr'},h('div',{class:'t'},(i+1)+'. '+r.nama),h('div',{class:'grid3'},h('div',null,h('label',null,'Jumlah'),bind(h('input',{type:'text',inputmode:'numeric'}),'jumlah',r)),h('div',null,h('label',null,'Type'),bind(h('input',{type:'text'}),'type',r)),h('div',null,h('label',null,'Merk'),bind(h('input',{type:'text'}),'merk',r))),
+   h('div',{class:'grid',style:'grid-template-columns:1fr 1fr;margin-top:6px'},h('div',null,h('label',null,'No. seri'),bind(h('input',{type:'text'}),'noseri',r)),h('div',null,h('label',null,'Kapasitas / ratio'),bind(h('input',{type:'text'}),'kap',r)))))});
+  c.append(pmL('Catatan realisasi pemeliharaan'),bind(h('textarea',{rows:'3',placeholder:'Kosong = terisi otomatis dari tindakan yang dicentang'}),'realisasi',b),pmL('Pengawas'),bind(h('input',{type:'text'}),'pengawas',b));return c}
+ function isi(){sec.innerHTML='';
+  if(rec.hasil!=='terlaksana'){sec.append(h('div',{class:'card'},pmL(rec.hasil==='ditunda'?'Alasan ditunda (wajib)':'Alasan batal (wajib)'),bind(h('textarea',{placeholder:rec.hasil==='ditunda'?'mis. hujan, pelanggan belum siap, material belum ada':'mis. permintaan pelanggan, gardu sudah dikerjakan'}),'alasan'),
+    h('p',{class:'mut'},rec.hasil==='ditunda'?'Rencana tetap terjadwal di kantor. Kantor yang menentukan tanggal baru.':'Rencana dibatalkan di DIGARDU dan temuannya kembali terbuka.')),fotoBox('bukti','Foto bukti',false));
+   sec.append(temuanBaruCard());return}
+  sec.append(h('div',{class:'card'},pmL('Padam nyata'),h('div',{class:'row'},h('div',null,h('small',{class:'mut'},'Mulai'),bind(pmJamInput(),'jam_mulai')),h('div',null,h('small',{class:'mut'},'Selesai'),bind(pmJamInput(),'jam_selesai'))),
+   h('label',{style:'display:flex;gap:10px;align-items:center;margin-top:12px'},(()=>{const c=h('input',{type:'checkbox',style:'width:22px;height:22px'});c.checked=!!rec.surat;c.onchange=()=>{rec.surat=c.checked;touch()};return c})(),'Surat pemberitahuan sudah disampaikan ke pelanggan')));
+  /* bentuk laporan */
+  const bentuk=h('div',{class:'card'},pmL('Bentuk laporan'));const bx=h('div',{class:'chips'});
+  for(const [v,t] of [[true,'Form sistematis (beton)'],[false,'Pekerjaan lain (bebas)']]){const r=h('input',{type:'radio',name:'sis',onchange:()=>{rec.sis=v;rec.jenis=v?PM_SISTEMATIS:(rec.jenis===PM_SISTEMATIS?pmTebakJenis(it):rec.jenis);touch();isi()}});if(!!rec.sis===v)r.checked=true;bx.append(h('label',null,r,h('span',{class:'chip good'},t)))}
+  bentuk.append(bx);sec.append(bentuk);
+  if(rec.sis){sec.append(checklist())}
+  else{
+   const jenisSel=h('select',null,S.jenis.filter(j=>j!==PM_SISTEMATIS).map(j=>h('option',{value:j},j)));bind(jenisSel,'jenis');const trafoBox=h('div');
+   const rt=()=>{trafoBox.innerHTML='';if(!PM_JENIS_TRAFO.includes(rec.jenis))return;const tr=it.trafo||[];
+    if(!tr.length){trafoBox.append(h('div',{class:'mut'},'Gardu ini tidak punya trafo terdaftar di DIGARDU.'));return}
+    trafoBox.append(pmL('Trafo yang dikerjakan (wajib)'));for(const t of tr){const c=h('input',{type:'checkbox',style:'width:22px;height:22px'});c.checked=rec.aset_ids.includes(t.aset_id);c.onchange=()=>{rec.aset_ids=rec.aset_ids.filter(x=>x!==t.aset_id);if(c.checked)rec.aset_ids.push(t.aset_id);touch()};
+     trafoBox.append(h('label',{style:'display:flex;gap:10px;align-items:center;margin:6px 0'},c,[t.kapasitas?t.kapasitas+' kVA':'',t.merk,t.no_seri?'No. seri '+t.no_seri:'',t.tahun?'('+t.tahun+')':''].filter(Boolean).join(' · ')))}};
+   jenisSel.addEventListener('change',rt);rt();
+   const ur=bind(h('textarea',{placeholder:'Apa yang dikerjakan dan bagaimana hasilnya',rows:'4'}),'uraian');
+   const kata=h('div',{class:'chips',style:'margin-top:8px'});for(const k of PM_KATA)kata.append(h('button',{type:'button',class:'chip',style:'cursor:pointer',onclick:()=>{const v=(ur.value.trim()?ur.value.trim().replace(/[;.]$/,'')+'; ':'')+k;ur.value=v;rec.uraian=v;touch()}},k));
+   sec.append(h('div',{class:'card'},pmL('Jenis pekerjaan'),jenisSel,trafoBox,pmL('Hasil / uraian pekerjaan'),ur,kata,pmL('Catatan tambahan (opsional)'),bind(h('input',{type:'text'}),'ket')))}
+  if((it.temuan||[]).length){const c=h('div',{class:'card'},pmL('Temuan dalam rencana'));const alasan=h('div');
+   const ra=()=>{alasan.innerHTML='';if(Object.values(rec.putusan).includes('tanpa'))alasan.append(pmL('Alasan tidak perlu tindakan (wajib)'),bind(h('input',{type:'text',placeholder:'mis. kondisi masih baik saat dicek'}),'alasan_tanpa'))};
+   for(const t of it.temuan){const s=h('select',null,[['selesai','Selesai dikerjakan'],['tanpa','Tidak perlu tindakan'],['belum','Belum dikerjakan']].map(o=>h('option',{value:o[0]},o[1])));s.value=rec.putusan[t.temuan_id]||'selesai';s.onchange=()=>{rec.putusan[t.temuan_id]=s.value;touch();ra()};
+    c.append(h('div',{class:'item'},h('div',{class:'t'},(t.no?t.no+'. ':'')+[t.grup,t.item].filter(Boolean).join(' · ')),h('div',{class:'mut',style:'margin-bottom:6px'},[t.kondisi,t.nilai,t.catatan].filter(Boolean).join(', ')),s))}
+   c.append(alasan);ra();sec.append(c)}
+  sec.append(fotoBox('sebelum','Foto SEBELUM',true),fotoBox('sesudah','Foto SESUDAH',true),baperalatan(),temuanBaruCard());
+  sec.append(h('div',{class:'card'},pmL('Petugas pelaksana (wajib)'),bind(h('input',{type:'text',placeholder:'Nama petugas / regu'}),'petugas')))}
+ function temuanBaruCard(){const c=h('div',{class:'card'});
+  function draw(){c.innerHTML='';c.append(pmL('Temuan baru dari lapangan (opsional)'),h('div',{class:'mut'},'Kerusakan lain yang belum ada di rencana. Masuk ke daftar temuan di kantor.'));
+   rec.temuan_baru.forEach((t,i)=>{c.append(h('div',{class:'jr'},bind(h('input',{type:'text',placeholder:'Temuan (mis. Pagar miring)'}),'item',t),h('div',{style:'height:6px'}),bind(h('input',{type:'text',placeholder:'Kondisi / catatan'}),'catatan',t),
+     h('div',{class:'row',style:'margin-top:6px'},h('label',{style:'display:flex;gap:8px;align-items:center'},(()=>{const x=h('input',{type:'checkbox',style:'width:22px;height:22px'});x.checked=!!t.prioritas;x.onchange=()=>{t.prioritas=x.checked?1:0;touch()};return x})(),'Prioritas'),locked?null:h('button',{class:'btn red sm',type:'button',style:'flex:0',onclick:()=>{rec.temuan_baru.splice(i,1);touch();draw()}},ico('trash',15)))))});
+   if(!locked)c.append(h('button',{class:'btn sec sm',type:'button',onclick:()=>{rec.temuan_baru.push({grup:'Temuan saat pemeliharaan',item:'',kondisi:'',catatan:'',prioritas:0});touch();draw()}},ico('plus',15),'Tambah temuan'))}
+  draw();return c}
+ isi();m.append(fs);
+ if(!locked)m.append(h('div',{class:'bar'},h('button',{class:'btn sec',type:'button',onclick:async()=>{await persist();pmHome()}},'Simpan draft'),h('button',{class:'btn',type:'button',onclick:()=>pmSelesai(it,rec,persist)},ico('lock',16),'Selesai dan kunci')));
+ else if(!sent)m.append(h('div',{class:'bar'},h('button',{class:'btn',type:'button',onclick:()=>pmKirimUtama([rec])},ico('send',16),'Kirim langsung')));
+ m.append(h('div',{style:'height:80px'}));app.append(m)}
+
+async function pmSelesai(it,rec,persist){const e=[];
+ if(!pmIsoOk(rec.tanggal))e.push('Isi tanggal.');else if(rec.tanggal>today())e.push('Tanggal tidak boleh di masa depan.');
+ if(rec.hasil!=='terlaksana'){if(!String(rec.alasan||'').trim())e.push('Isi alasan.')}
+ else{
+  rec.jam_mulai=pmNormJam(rec.jam_mulai);rec.jam_selesai=pmNormJam(rec.jam_selesai);
+  if(!pmJamOk(rec.jam_mulai)||!pmJamOk(rec.jam_selesai))e.push('Jam padam harus format 24 jam, contoh 09:10.');
+  else if(rec.jam_mulai&&rec.jam_selesai&&rec.jam_selesai<=rec.jam_mulai)e.push('Jam padam selesai harus setelah jam mulai.');
+  if(rec.sis){rec.jenis=PM_SISTEMATIS;if(!S.jenis.includes(PM_SISTEMATIS))e.push('Daftar jenis dari kantor belum memuat "Pemeliharaan sistematis". Minta paket rencana baru (kantor perlu update DIGARDU).');
+   if(!pmCekLap(rec).length)e.push('Centang minimal satu tindakan di form sistematis.')}
+  else{if(!S.jenis.includes(rec.jenis))e.push('Pilih jenis pekerjaan.');
+   if(PM_JENIS_TRAFO.includes(rec.jenis)&&(it.trafo||[]).length&&!rec.aset_ids.length)e.push('Pilih trafo yang dikerjakan.');
+   if(!String(rec.uraian||'').trim())e.push('Isi hasil / uraian pekerjaan.')}
+  const vals=Object.values(rec.putusan);
+  if(vals.includes('tanpa')&&!String(rec.alasan_tanpa||'').trim())e.push('Isi alasan "tidak perlu tindakan".');
+  if(vals.length&&vals.every(v=>v==='belum'))e.push('Semua temuan "belum dikerjakan". Kalau memang belum dikerjakan, pilih status Ditunda.');
+  if(!String(rec.petugas||'').trim())e.push('Isi nama petugas.');
+  const ps=await photosOf(rec.id);if(!ps.some(p=>p.ref==='sebelum'))e.push('Foto SEBELUM minimal 1.');if(!ps.some(p=>p.ref==='sesudah'))e.push('Foto SESUDAH minimal 1.')}
+ if(e.length)return alert('Belum bisa diselesaikan:\n\n• '+e.join('\n• '));
+ if(!confirm('Selesaikan dan kunci laporan ini? Setelah dikunci siap dikirim ke DIGARDU.'))return;
+ rec.temuan_baru=rec.temuan_baru.filter(t=>String(t.item||'').trim());
+ if(rec.hasil==='terlaksana'&&rec.sis){rec.cek_lap=pmCekLap(rec);const r=pmRingkasSis(rec);rec.uraian='Pemeliharaan sistematis. '+r+(String(rec.ekstra||'').trim()?' · '+String(rec.ekstra).trim():'')}
+ if(rec.hasil==='terlaksana'&&rec.ba&&!String(rec.ba.realisasi||'').trim())rec.ba.realisasi=rec.sis?pmRingkasSis(rec):String(rec.uraian||'');
+ rec.petugas=String(rec.petugas||'').trim();if(rec.petugas){S.petugas=rec.petugas;await dbPut('meta',S.petugas,'petugas')}
+ rec.status='selesai';rec.selesaiAt=new Date().toISOString();await persist();
+ if(confirm('Laporan terkunci. Kirim ke DIGARDU sekarang?'))pmKirimUtama([rec]);else pmHome()}
+
+/* ===== paket zip dan kirim langsung ===== */
+async function pmBuildPackage(recs){const enc=new TextEncoder(),files=[],man={format:'inspeksi-gardu-paket',versi:1,dibuat:new Date().toISOString(),setor:new Date().toISOString(),petugas:[...new Set(recs.map(r=>r.petugas).filter(Boolean))].join('; '),items:[]};
+ for(const r of recs){const pm=[];for(const p of await photosOf(r.id)){const u8=new Uint8Array(await p.blob.arrayBuffer());const fn=`foto/${r.id}/${p.pid}.jpg`;files.push({name:fn,data:u8});pm.push({pid:p.pid,ref:p.ref,tipe:p.ref,file:fn,crc:crc32(u8),ts:p.ts,wm:p.wm!==false})}
+  const jd=enc.encode(JSON.stringify({...r,foto:pm},null,1));const jn=`data/${r.id}.json`;files.push({name:jn,data:jd});man.items.push({id:r.id,gardu:r.gardu.nama,form:r.form,rev:r.rev,tanggal:r.tanggal,data:jn,crc:crc32(jd),jumlah_foto:pm.length})}
+ files.unshift({name:'manifest.json',data:enc.encode(JSON.stringify(man,null,1))});return makeZip(files)}
+async function pmKirim(recs){try{const blob=await pmBuildPackage(recs);const d=new Date();const stamp=today().replace(/-/g,'')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');const fn=`pemeliharaan-${slug((recs[0]&&recs[0].petugas)||'petugas')}-${stamp}.zip`;const file=new File([blob],fn,{type:'application/zip'});
+ let shared=false;if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:fn,text:'Laporan pemeliharaan gardu · '+recs.length+' laporan'});shared=true}catch(e){if(e.name==='AbortError')return}}
+ if(!shared){const a=h('a',{href:URL.createObjectURL(blob),download:fn});document.body.append(a);a.click();a.remove()}
+ if(confirm('Paket sudah dibuat ('+fn+'). Tandai '+recs.length+' laporan sebagai terkirim?')){for(const r of recs){r.sentAt=new Date().toISOString();await saveRec(r)}}pmHome()}catch(e){alert('Gagal membuat paket: '+e.message)}}
+function pmKirimUtama(recs){if(SRV.cfg&&SRV.cfg.url&&SRV.cfg.user)return pmKirimLangsung(recs);
+ if(confirm('Server DIGARDU belum diatur di HP ini.\n\nOK = atur sekarang (Kirim langsung).\nBatal = kirim sebagai paket zip lewat WhatsApp.')){srvDialog();return}
+ return pmKirim(recs)}
+async function pmKirimLangsung(recs){
+ const dlg=h('dialog',null),judul=h('h2',{style:'margin-top:0'},'Mengirim ke DIGARDU'),log=h('div',{class:'kl'}),tutup=h('button',{class:'btn',type:'button',disabled:true},'Tutup');
+ const zipBtn=h('button',{class:'btn sec sm',type:'button',style:'display:none'},'Kirim yang gagal sebagai zip');
+ const tulis=(t,c)=>{const d=h('div',{class:c||''},t);log.append(d);log.scrollTop=log.scrollHeight};
+ dlg.addEventListener('cancel',e=>e.preventDefault());tutup.onclick=()=>{dlg.close()};dlg.addEventListener('close',()=>{dlg.remove();pmHome()});
+ dlg.append(judul,h('div',{class:'mut',style:'margin-bottom:8px'},'Jangan tutup halaman ini sampai selesai. Data tetap aman di HP kalau gagal.'),log,h('div',{class:'row',style:'margin-top:12px'},tutup),h('div',{class:'row',style:'margin-top:8px'},zipBtn));
+ document.body.append(dlg);dlg.showModal();
+ const st={masuk:0,sudah:0,dihapus:0,gagal:[]};const gagalRecs=[];
+ for(const r of recs){const nm=r.gardu.nama+' ('+r.rencana_id+')';
+  try{
+   const c=await srvUlang({aksi:'cek',id:r.id},60000,3);
+   if(c.ada){tulis('• '+nm+': sudah ada di server','o');if(c.status==='Dihapus')st.dihapus++;else st.sudah++;r.sentAt=new Date().toISOString();await saveRec(r);continue}
+   const pm=[],bytesBy={};
+   for(const p of await photosOf(r.id)){const u8=new Uint8Array(await p.blob.arrayBuffer());pm.push({pid:p.pid,ref:p.ref,tipe:p.ref,file:`${p.pid}.jpg`,crc:crc32(u8),ts:p.ts,wm:p.wm!==false});bytesBy[p.pid]=u8}
+   let n=0;for(const f of pm){n++;tulis('• '+nm+': foto '+n+'/'+pm.length+'...');await srvUlang({aksi:'foto',id:r.id,tanggal:r.tanggal,pid:f.pid,crc:f.crc,data:u8b64(bytesBy[f.pid])},120000,3);delete bytesBy[f.pid]}
+   const rec=Object.assign({},r,{foto:pm});
+   const res=await srvUlang({aksi:'kirim',rec},120000,3);
+   if(res.status==='foto_kurang')throw new Error('foto belum lengkap di server ('+(res.kurang||[]).length+'), coba kirim ulang');
+   if(res.status==='masuk'){st.masuk++;tulis('✓ '+nm+': terkirim','o')}else if(res.status==='sudah'){st.sudah++;tulis('✓ '+nm+': sudah ada di server','o')}else if(res.status==='dihapus'){st.dihapus++;tulis('• '+nm+': pernah dihapus di DIGARDU, dilewati','o')}
+   r.sentAt=new Date().toISOString();await saveRec(r)
+  }catch(e){st.gagal.push(nm+': '+e.message);gagalRecs.push(r);tulis('✗ '+nm+': '+e.message,'e');
+   if(/sinyal|terhubung|merespons/.test(e.message)){const sisa=recs.length-recs.indexOf(r)-1;if(sisa>0)tulis('Koneksi bermasalah, pengiriman dihentikan. '+sisa+' lainnya belum dicoba.','e');break}}}
+ judul.textContent=st.gagal.length?'Selesai dengan masalah':'Selesai';
+ tulis('\nTerkirim baru: '+st.masuk+' · sudah ada: '+st.sudah+(st.dihapus?' · pernah dihapus: '+st.dihapus:'')+' · gagal: '+st.gagal.length);
+ if(st.gagal.length){tulis('Yang gagal tetap tersimpan di HP dan belum ditandai terkirim. Coba lagi nanti, atau kirim sebagai paket zip.','e');
+  zipBtn.style.display='';zipBtn.onclick=()=>{dlg.close();pmKirim(gagalRecs)}}
+ tutup.disabled=false}
+
+
 /* ================= start ================= */
+$('#fpaket').addEventListener('change',e=>{const f=e.target.files[0];if(f)pmImpor(f)});
 openDB().then(()=>srvLoad()).then(()=>{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();return renderHome()}).catch(e=>{app.textContent='Gagal membuka penyimpanan lokal: '+e.message+' (jangan pakai mode private/incognito).'});
 </script>
 </body>
