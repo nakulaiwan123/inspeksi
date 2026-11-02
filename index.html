@@ -117,7 +117,7 @@ main.hastab{padding-bottom:96px}
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
-const VERSI='2 Nov 2026 · v9.3 (mode di header)';
+const VERSI='2 Nov 2026 · v9.4 (beranda inspeksi disamakan)';
 /* ================= util ================= */
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){const v=attrs[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(k,v===true?'':v);}for(const c of kids.flat(2)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;}
 const ICON={bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',gauge:'<path d="M12 14l4-4"/><path d="M3.3 17a10 10 0 1 1 17.4 0"/>',inbox:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'};
@@ -374,12 +374,11 @@ async function renderHomeInspeksi(){app.innerHTML='';
  {let ch=false;for(const t of S.tugas){if(t.jenis&&!t.jenisOleh&&!t.jenisMaster&&!t.manual&&!S.records.some(r=>r.gardu.id===t.id)){t.jenis='';ch=true}}if(ch)await saveTugas()}
  app.append(topBar('Inspeksi Gardu',null,true));
  const m=h('main',{class:'hastab'});{const c=pengingat(kirimQueue(),()=>kirimUtama(kirimQueue()));if(c)m.append(c)}
- m.append(h('div',{class:'row',style:'margin-bottom:12px'},h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:()=>{const f=$('#fcsv');f.value='';f.click()}},ico('inbox',17),'Impor penugasan'),h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:async()=>addManual()},ico('plus',17),'Gardu manual')));
  // satu daftar gardu: penugasan + gardu yang sudah pernah diinspeksi tapi tidak ada di penugasan; status inspeksi/beban/pengiriman ada di kartu masing-masing
  const known=new Set(S.tugas.map(t=>t.id)),extra=[];for(const r of S.records){if(!known.has(r.gardu.id)){known.add(r.gardu.id);extra.push({...tugasOf(r),_extra:true})}}
  const list=[...S.tugas,...extra];
  {let ch=false;for(const t of list){if(!t.jenis){const ins=latestRec(t.id,'tiang')||latestRec(t.id,'beton');if(ins){t.jenis=ins.tm?'tm':ins.form;if(!t._extra)ch=true}}}if(ch)saveTugas()}
- if(!list.length){m.append(h('h2',null,'Daftar gardu'),h('div',{class:'card mut'},'Belum ada gardu. Impor file penugasan dari kantor, atau tambah gardu manual.'))}
+ if(!list.length){m.append(h('div',{class:'card'},h('div',{class:'gname'},'Belum ada penugasan'),h('p',{class:'mut'},'Minta file penugasan (Excel) dari kantor lewat WhatsApp, simpan di HP ini, lalu impor. Gardu di luar penugasan bisa ditambah lewat Menu > Gardu manual.'),h('button',{class:'btn',type:'button',onclick:()=>{const f=$('#fcsv');f.value='';f.click()}},ico('inbox',18),'Impor penugasan')))}
  else{
   const pending=S.records.filter(r=>r.status==='selesai'&&!r.sentAt);
   m.append(h('div',{class:'sech'},h('h2',null,LF.tab==='kirim'?'Sudah terkirim':'Perlu dikerjakan'),h('span',{class:'badge '+(pending.length?'draft':'ok')},pending.length?pending.length+' belum dikirim':(S.records.some(r=>r.status!=='selesai')?S.records.filter(r=>r.status!=='selesai').length+' draft berjalan':(S.records.length?'Semua terkirim':'Tersimpan di HP')))));
