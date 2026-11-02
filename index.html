@@ -15,6 +15,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 header.top{position:sticky;top:0;z-index:5;background:var(--hdr);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd);color:var(--tx);padding:10px 14px;display:flex;align-items:center;gap:10px}
 header.top h1{font-size:16px;margin:0;flex:1;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);text-shadow:var(--glow);font-weight:800}
 header.top button{background:transparent;color:var(--acc);border:1px solid var(--bd);border-radius:10px;padding:7px 11px;min-height:38px}
+header.top .seg{flex:1;display:flex;gap:0;border:1px solid var(--bd);border-radius:10px;overflow:hidden;min-width:0}
+header.top .seg button{flex:1;border:0;border-radius:0;font-weight:800;font-size:13px;padding:7px 4px;min-height:38px;white-space:nowrap}
+header.top .seg button.on{background:var(--acc);color:#fff}
 header.top .ibtn{padding:0;width:38px;display:grid;place-items:center}
 .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#06b6d4,#2563eb);display:grid;place-items:center;color:#fff;box-shadow:0 4px 14px rgba(6,182,212,.4);flex:none}
 main{padding:12px;max-width:760px;margin:0 auto}
@@ -114,7 +117,7 @@ main.hastab{padding-bottom:96px}
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
-const VERSI='2 Nov 2026 · v9.2 (tombol mode, tanpa PIN)';
+const VERSI='2 Nov 2026 · v9.3 (mode di header)';
 /* ================= util ================= */
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){const v=attrs[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(k,v===true?'':v);}for(const c of kids.flat(2)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;}
 const ICON={bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',gauge:'<path d="M12 14l4-4"/><path d="M3.3 17a10 10 0 1 1 17.4 0"/>',inbox:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'};
@@ -298,7 +301,7 @@ async function fillThumbs(box,rec,ref,locked){box.innerHTML='';const ps=(await p
 /* ================= navigasi ================= */
 const app=$('#app');
 function topBar(title,back,home){const tb=h('button',{class:'ibtn',title:'Ganti tema terang/gelap','aria-label':'Ganti tema',onclick:()=>{THEME.set(isDark()?'light':'dark');applyTheme();tb.textContent='';tb.append(ico(isDark()?'moon':'sun',18))}},ico(isDark()?'moon':'sun',18));
- return h('header',{class:'top'},back?h('button',{onclick:back},'‹ Kembali'):(home?h('button',{class:'ibtn',type:'button',title:'Menu','aria-label':'Buka menu',onclick:openMenu},ico('menu',20)):h('div',{class:'logo'},ico('bolt',20))),h('h1',null,title),tb)}
+ return h('header',{class:'top'},back?h('button',{onclick:back},'‹ Kembali'):(home?h('button',{class:'ibtn',type:'button',title:'Menu','aria-label':'Buka menu',onclick:openMenu},ico('menu',20)):h('div',{class:'logo'},ico('bolt',20))),(home&&S.mode&&!timMode()?modeSeg():h('h1',null,title)),tb)}
 function dlg(title,fields){return new Promise(res=>{const d=h('dialog');const inputs={};const f=h('form',{method:'dialog'},h('h3',null,title));for(const fl of fields){f.append(h('label',{class:'f'},fl.label));const i=fl.opts?h('select',null,fl.opts.map(o=>h('option',{value:o[0]},o[1]))):h('input',fl.pw?{type:'password',inputmode:'numeric',autocomplete:'off',maxlength:'6',value:''}:{type:'text',value:fl.value||''});if(fl.opts&&fl.value)i.value=fl.value;inputs[fl.key]=i;f.append(i)}
  f.append(h('div',{class:'row',style:'margin-top:12px'},h('button',{class:'btn sec',value:'x',type:'submit'},'Batal'),h('button',{class:'btn',value:'ok',type:'submit'},'OK')));d.append(f);document.body.append(d);d.addEventListener('close',()=>{const ok=d.returnValue==='ok';const o={};for(const k in inputs)o[k]=inputs[k].value.trim();d.remove();res(ok?o:null)});d.showModal()})}
 /* ===== PIN admin: impor penugasan, tambah gardu manual, hapus gardu ===== */
@@ -370,7 +373,7 @@ async function renderHome(){await loadState();if(!S.mode)return pilihMode();retu
 async function renderHomeInspeksi(){app.innerHTML='';
  {let ch=false;for(const t of S.tugas){if(t.jenis&&!t.jenisOleh&&!t.jenisMaster&&!t.manual&&!S.records.some(r=>r.gardu.id===t.id)){t.jenis='';ch=true}}if(ch)await saveTugas()}
  app.append(topBar('Inspeksi Gardu',null,true));
- const m=h('main',{class:'hastab'});m.append(modeBar());{const c=pengingat(kirimQueue(),()=>kirimUtama(kirimQueue()));if(c)m.append(c)}
+ const m=h('main',{class:'hastab'});{const c=pengingat(kirimQueue(),()=>kirimUtama(kirimQueue()));if(c)m.append(c)}
  m.append(h('div',{class:'row',style:'margin-bottom:12px'},h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:()=>{const f=$('#fcsv');f.value='';f.click()}},ico('inbox',17),'Impor penugasan'),h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:async()=>addManual()},ico('plus',17),'Gardu manual')));
  // satu daftar gardu: penugasan + gardu yang sudah pernah diinspeksi tapi tidak ada di penugasan; status inspeksi/beban/pengiriman ada di kartu masing-masing
  const known=new Set(S.tugas.map(t=>t.id)),extra=[];for(const r of S.records){if(!known.has(r.gardu.id)){known.add(r.gardu.id);extra.push({...tugasOf(r),_extra:true})}}
@@ -737,7 +740,7 @@ function pmTabs(){const nA=S.items.filter(i=>!pmTuntas(i)).length,nS=S.items.len
   tb('c-kirim','send','Kirim',false,pmKirimSekarang,nP),
   tb('c-menu','menu','Menu',false,pmMenu))}
 async function pmHome(){await loadState();app.innerHTML='';app.append(topBar('Pemeliharaan Gardu',null,true));
- const m=h('main',{class:'hastab'});m.append(modeBar());{const c=pengingat(pmQueue(),pmKirimSekarang);if(c)m.append(c)}
+ const m=h('main',{class:'hastab'});{const c=pengingat(pmQueue(),pmKirimSekarang);if(c)m.append(c)}
  if(!S.items.length){m.append(h('div',{class:'card'},h('div',{class:'gname'},'Belum ada rencana'),h('p',{class:'mut'},'Minta paket rencana (file .json) dari kantor lewat WhatsApp, simpan di HP ini, lalu impor.'),h('button',{class:'btn',type:'button',onclick:pmPilihPaket},ico('inbox',18),'Impor paket rencana')));app.append(m,pmTabs());return}
  const q=h('input',{type:'text',placeholder:'Cari gardu, kode, atau pekerjaan',value:PM_LF.q,oninput:e=>{PM_LF.q=e.target.value;debounce(()=>draw(),250)}});m.append(h('div',{class:'fil'},q));
  const box=h('div');m.append(box);
@@ -788,11 +791,9 @@ async function cekDiServer(recs){const r2=recs.filter(r=>r.status==='selesai');i
  try{for(const r of r2){const d=await srvUlang({aksi:'cek',id:r.id},30000);if(!d||!d.ada)return'TIDAK DIHAPUS: ada laporan yang belum ditemukan di server DIGARDU ('+((r.gardu&&r.gardu.nama)||r.id)+'). Kirim ulang dulu.'}}
  catch(e){return'TIDAK DIHAPUS: tidak bisa memastikan data sudah ada di server.\n'+e.message}return''}
 
-/* bilah mode di atas beranda: akun terkunci = label; akun bebas = dua tombol */
-function modeBar(){const lk=timMode();
- if(lk)return h('div',{class:'badge ok',style:'display:block;text-align:center;margin-bottom:10px;padding:8px;font-size:14px'},'Mode: Tim '+(lk==='inspeksi'?'Inspeksi':'Pemeliharaan'));
- const b=(m,l)=>h('button',{type:'button',class:'btn'+(S.mode===m?'':' sec'),style:'flex:1;padding:12px 6px','aria-pressed':S.mode===m?'true':'false',onclick:async()=>{if(S.mode===m)return;S.mode=m;await dbPut('meta',m,'mode');renderHome()}},l);
- return h('div',{class:'row',style:'margin-bottom:12px'},b('inspeksi','Inspeksi'),b('pemeliharaan','Pemeliharaan'))}
+/* pemilih mode di dalam header (akun bebas); akun terkunci: judul header saja */
+function modeSeg(){const b=(m,l)=>h('button',{type:'button',class:S.mode===m?'on':'','aria-pressed':S.mode===m?'true':'false',onclick:async()=>{if(S.mode===m)return;S.mode=m;await dbPut('meta',m,'mode');renderHome()}},l);
+ return h('div',{class:'seg',role:'group','aria-label':'Mode aplikasi'},b('inspeksi','Inspeksi'),b('pemeliharaan','Pemeliharaan'))}
 
 /* ===== mode aplikasi ===== */
 async function pilihMode(){app.innerHTML='';app.append(topBar('Inspeksi dan Pemeliharaan',null,false));
