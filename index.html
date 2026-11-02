@@ -24,6 +24,9 @@ h2::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50
 .sech{display:flex;align-items:center;justify-content:space-between;gap:8px}
 label.f{display:block;font:600 11.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--acc);margin:10px 0 4px}
 input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{width:100%;padding:11px 12px;min-height:44px;border:1px solid var(--inpbd);border-radius:12px;background:var(--inp);color:var(--tx);font:inherit}
+input[type=password],input[type=url]{width:100%;padding:11px 12px;min-height:44px;border:1px solid var(--inpbd);border-radius:12px;background:var(--inp);color:var(--tx);font:inherit}
+.kl{font:12.5px ui-monospace,Consolas,monospace;line-height:1.5;max-height:46vh;overflow:auto;border:1px solid var(--bd);border-radius:10px;padding:8px;background:var(--card2);white-space:pre-wrap;word-break:break-word}
+.kl .e{color:var(--bad)}.kl .o{color:var(--okt)}
 input[type=text]:focus,input[type=number]:focus,input[type=date]:focus,input[type=time]:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px var(--ring)}
 textarea{min-height:72px}
 button{font:inherit}
@@ -110,7 +113,7 @@ main.hastab{padding-bottom:96px}
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
-const VERSI='12 Okt 2026 · v7 (menu)';
+const VERSI='2 Nov 2026 · v8.1 (bersihkan daftar)';
 /* ================= util ================= */
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){const v=attrs[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(k,v===true?'':v);}for(const c of kids.flat(2)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;}
 const ICON={bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',gauge:'<path d="M12 14l4-4"/><path d="M3.3 17a10 10 0 1 1 17.4 0"/>',inbox:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'};
@@ -225,6 +228,8 @@ function areaNorm(s){const k=normKey(s);if(!k)return'';if(k.includes('nagoya'))r
 function normJenis(s){s=String(s||'').toLowerCase();if(/pelanggan|\btm\b|kubikel/.test(s))return'tm';if(/tiang|portal|pole/.test(s))return'tiang';if(/beton|bangunan|kios|gedung|concrete/.test(s))return'beton';return''}
 // CSV tanpa baris judul: urutan mengikuti sheet master (nomor lama; nomor baru; lokasi; [pelanggan]; kVA)
 // KVA kosong => gardu pelanggan TM (selalu beton). Jenis 'tiang' tetap tiang (KVA kosong di situ = data belum lengkap)
+// Jenis dari master GADIS: Beton/TR=beton, Portal/TR=tiang, TM=pelanggan TM. GH dan TM&TR sengaja dikosongkan: petugas yang menentukan.
+const JENIS_MASTER=j=>{const x=String(j||'').toLowerCase().replace(/\s/g,'');return x==='beton/tr'?'beton':x==='portal/tr'?'tiang':x==='tm'?'tm':''};
 const jenisTm=(j,kvaKosong)=>kvaKosong&&(j===''||j==='beton')?'tm':j;
 function csvNoHeader(rows){const w=Math.max(...rows.map(r=>r.length));const isId=v=>/^[A-Za-z]+(\.[A-Za-z0-9]+)+$/.test(String(v||'').trim());
  let cId=-1,best=0;for(let c=0;c<w;c++){const n=rows.filter(r=>isId(r[c])).length;if(n>best){best=n;cId=c}}
@@ -257,7 +262,7 @@ function rowsToTugas(rows){if(rows.length<1)throw new Error('CSV kosong');
   const kv=parseFloat(g(cKva).replace(',','.'));
   if(cSt>=0&&/tidak ada|bongkar|hapus|non.?aktif/i.test(g(cSt)))continue;
   // Jenis gardu TIDAK dibaca dari file: selalu ditentukan petugas di HP saat gardu diketuk. ID PEL hanya disimpan sebagai pilihan awal (TM) di dialog jenis.
-  const idp=/\d/.test(g(cIdp))?g(cIdp):'';out.push({id:g(cId)||slug(nama),nama,lokasi:areaNorm(g(cLok)),jenis:'',idpel:idp,rencana:g(cRen),selesai:g(cSel),pic:g(cPic),ket:g(cKet),penyulang:g(cPeny)||peny,kva:kv>0?String(kv):'',lama:g(cLama),pelanggan:g(cPel)})}
+  const idp=/\d/.test(g(cIdp))?g(cIdp):'';const jm=cJen>=0?JENIS_MASTER(g(cJen)):'';out.push({id:g(cId)||slug(nama),nama,lokasi:areaNorm(g(cLok)),jenis:jm,jenisMaster:!!jm,idpel:idp,rencana:g(cRen),selesai:g(cSel),pic:g(cPic),ket:g(cKet),penyulang:g(cPeny)||peny,kva:kv>0?String(kv):'',lama:g(cLama),pelanggan:g(cPel)})}
  if(!out.length)throw new Error('Tidak ada baris gardu terbaca (cek kolom Nomor Gardu Baru terisi)');
  return out}
 
@@ -323,7 +328,8 @@ const formOf=j=>j==='tm'?'beton':j;
 
 /* ===== menu geser (☰) + tab bawah di beranda ===== */
 const kirimQueue=()=>S.records.filter(r=>r.status==='selesai'&&!r.sentAt);
-function kirimSekarang(){const q=kirimQueue();if(!q.length)return alert('Belum ada inspeksi selesai yang belum dikirim.');kirim(q)}
+function kirimSekarang(){const q=kirimQueue();if(!q.length)return alert('Belum ada inspeksi selesai yang belum dikirim.');kirimUtama(q)}
+function kirimZipSekarang(){const q=kirimQueue();if(!q.length)return alert('Belum ada inspeksi selesai yang belum dikirim.');kirim(q)}
 function closeMenu(){const d=$('#drawer');if(d){d.classList.remove('on');$('#scrim').classList.remove('on')}}
 function openMenu(){let d=$('#drawer');
  if(!d){document.body.append(h('div',{id:'scrim',onclick:closeMenu}),h('aside',{id:'drawer','aria-label':'Menu'}));d=$('#drawer');addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()})}
@@ -333,6 +339,10 @@ function openMenu(){let d=$('#drawer');
   h('div',{class:'dsep'},'Penugasan'),
   item('c-impor','inbox','Impor penugasan','Dari file Excel kantor',()=>{const f=$('#fcsv');f.value='';f.click()}),
   item('c-manual','plus','Gardu manual','Gardu di luar penugasan',async()=>addManual()),
+  item('c-pin','trash','Bersihkan daftar','Hapus gardu yang belum dikerjakan',bersihkanDaftar),
+  h('div',{class:'dsep'},'Pengiriman'),
+  item('c-kirim','send','Server DIGARDU',SRV.cfg&&SRV.cfg.url?('Kirim langsung · '+(SRV.cfg.user||'belum login')):'Belum diatur (kirim lewat zip)',srvDialog),
+  item('c-impor','inbox','Kirim paket zip','Cadangan lewat WhatsApp',kirimZipSekarang),
   h('div',{class:'dsep'},'Pengaturan'),
   item('c-pin','lock','PIN admin','Atur / ubah PIN',ubahPin),
   item('c-tema',isDark()?'sun':'moon',isDark()?'Tema terang':'Tema gelap','Ganti tampilan',()=>{THEME.set(isDark()?'light':'dark');applyTheme();renderHome()}),
@@ -363,7 +373,7 @@ const LF={q:'',tgl:'',st:'',n:30,tab:'aktif'},PAGE=30;
 function terkirimT(t){if(stCode(t)!=='lengkap')return false;const rs=[latestRec(t.id,'tiang')||latestRec(t.id,'beton')];if(t.jenis!=='tm')rs.push(latestRec(t.id,'beban'));return rs.every(r=>r&&r.sentAt)}
 function stCode(t){const ins=latestRec(t.id,'tiang')||latestRec(t.id,'beton'),b=latestRec(t.id,'beban');const iok=ins&&ins.status==='selesai',bok=b&&b.status==='selesai';if(iok&&(t.jenis==='tm'||bok))return'lengkap';return(ins||b)?'proses':'belum'}
 async function renderHome(){await loadState();app.innerHTML='';
- {let ch=false;for(const t of S.tugas){if(t.jenis&&!t.jenisOleh&&!t.manual&&!S.records.some(r=>r.gardu.id===t.id)){t.jenis='';ch=true}}if(ch)await saveTugas()}
+ {let ch=false;for(const t of S.tugas){if(t.jenis&&!t.jenisOleh&&!t.jenisMaster&&!t.manual&&!S.records.some(r=>r.gardu.id===t.id)){t.jenis='';ch=true}}if(ch)await saveTugas()}
  app.append(topBar('Inspeksi Gardu',null,true));
  const m=h('main',{class:'hastab'});
  m.append(h('div',{class:'row',style:'margin-bottom:12px'},h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:()=>{const f=$('#fcsv');f.value='';f.click()}},ico('inbox',17),'Impor penugasan'),h('button',{class:'btn sec',style:'padding:11px 8px;white-space:nowrap',onclick:async()=>addManual()},ico('plus',17),'Gardu manual')));
@@ -401,10 +411,14 @@ const bebanOk=id=>{const b=latestRec(id,'beban');return !!(b&&b.status==='selesa
 function statusLine(t){const ins=latestRec(t.id,'tiang')||latestRec(t.id,'beton');const miss=[];if(!(ins&&ins.status==='selesai'))miss.push('inspeksi');if(!t.jenis)miss.push('penentuan jenis gardu (TM / tiang / beton)');else if(t.jenis!=='tm'&&!bebanOk(t.id))miss.push('ukur beban trafo');
  return miss.length?h('div',{class:'mut',style:'margin-top:6px'},'Belum lengkap: '+miss.join(' + ')):h('div',{style:'margin-top:6px'},h('span',{class:'badge ok'},'Lengkap'))}
 function kunciOf(rows){const hi=rows.findIndex((r,i)=>i<25&&r.map(normKey).includes('kunci'));if(hi<0)return'';const c=rows[hi].map(normKey).indexOf('kunci');for(let i=hi+1;i<Math.min(rows.length,hi+6);i++){const v=String(rows[i][c]||'').trim();if(/^[0-9a-f]{64}$/.test(v))return v}return''}
-async function terapkanTugas(list,kunci){const by=new Map(S.tugas.map(t=>[t.id,t]));let baru=0;for(const t of list){if(by.has(t.id)){Object.assign(by.get(t.id),{...t,jenis:t.jenis||by.get(t.id).jenis,lokasi:t.lokasi||by.get(t.id).lokasi})}else{S.tugas.push(t);baru++}}
+async function terapkanTugas(list,kunci){
+ if(list.length>100){const bt=list.filter(t=>t.rencana||t.pic);
+  if(!bt.length){if(!confirm('File ini berisi '+list.length+' gardu tanpa tanggal rencana atau PIC. Kelihatannya master gardu, bukan jadwal inspeksi.\n\nTetap impor semua '+list.length+' gardu?'))return}
+  else if(bt.length<list.length){if(confirm('File berisi '+list.length+' gardu, '+bt.length+' di antaranya punya tanggal rencana atau PIC.\n\nOK = impor hanya '+bt.length+' gardu yang terjadwal.\nBatal = lanjut pilihan lain.'))list=bt;else if(!confirm('Impor semua '+list.length+' gardu? (Batal = tidak impor apa pun)'))return}}
+ const by=new Map(S.tugas.map(t=>[t.id,t]));let baru=0;for(const t of list){if(by.has(t.id)){Object.assign(by.get(t.id),{...t,jenis:t.jenisMaster&&!S.records.some(r=>r.gardu.id===t.id)?t.jenis:(by.get(t.id).jenis||t.jenis),lokasi:t.lokasi||by.get(t.id).lokasi})}else{S.tugas.push(t);baru++}}
  let pinInfo='';if(kunci){const ada=await dbGet('meta','pinhash');if(!ada||Date.now()<adminUntil){await dbPut('meta',kunci,'pinhash');pinInfo=ada?'\nPIN admin diperbarui dari file.':'\nPIN admin dari kantor sudah dipasang.'}}
  await saveTugas();
- alert(`Terbaca ${list.length} gardu (${baru} baru).\nJenis gardu (tiang / beton / TM) ditentukan petugas saat gardu diketuk di HP.`+pinInfo);renderHome()}
+ const nm=list.filter(t=>t.jenisMaster).length;alert(`Terbaca ${list.length} gardu (${baru} baru).\n`+(nm?`Jenis gardu dari master: ${nm} gardu. Sisanya ditentukan petugas saat gardu diketuk di HP.`:'Jenis gardu (tiang / beton / TM) ditentukan petugas saat gardu diketuk di HP.')+pinInfo);renderHome()}
 $('#fcsv').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const rows=/\.xlsx$/i.test(f.name)?await xlsxRows(await f.arrayBuffer()):parseCSV(await f.text());await terapkanTugas(rowsToTugas(rows),kunciOf(rows))}catch(err){alert('Gagal impor file penugasan: '+err.message)}});
 async function addManual(){const o=await dlg('Tambah gardu',[{key:'nama',label:'Nama gardu'},{key:'lokasi',label:'Area',opts:[['','— pilih —'],...AREAS.map(a=>[a,a])]},{key:'jenis',label:'Jenis gardu',opts:JENIS_OPTS}]);if(!o||!o.nama)return;const nt={id:slug(o.nama)+'-'+Date.now().toString(36).slice(-4),nama:o.nama,lokasi:o.lokasi,jenis:o.jenis,penyulang:'',kva:'',manual:true};S.tugas.push(nt);await catat('tambah',nt);await saveTugas();renderHome()}
 // jenis gardu ditentukan petugas di HP (satu-satunya sumber). Setiap penentuan dicatat di log (ikut paket) supaya admin bisa mencocokkan dengan screenshot penugasan.
@@ -431,7 +445,7 @@ async function renderGardu(id){await loadState();app.innerHTML='';
   const row=h('div',{class:'row',style:'margin-top:8px;flex-wrap:wrap;align-items:center'},
    h('button',{class:'btn '+(done?'sec':''),style:'flex:1 1 150px',onclick:()=>r?renderForm(r):openGardu(t,fm)},ico(fm==='inspeksi'?'clip':'gauge',17),lbl+': '+(!r?'Mulai':done?'Lihat':'Lanjutkan')),
    h('span',{class:'badge '+stt[1],style:'flex:0;white-space:nowrap'},stt[0]));
-  if(done)row.append(h('button',{class:'btn sec sm',style:'flex:0;white-space:nowrap',onclick:()=>kirim([r])},ico('refresh',14),r.sentAt?'Kirim ulang':'Kirim'));
+  if(done)row.append(h('button',{class:'btn sec sm',style:'flex:0;white-space:nowrap',onclick:()=>kirimUtama([r])},ico('refresh',14),r.sentAt?'Kirim ulang':'Kirim'));
   else if(r)row.append(h('button',{class:'btn sec sm',style:'flex:0',onclick:async()=>{if(confirm('Hapus draft ini beserta fotonya?')){await catat('hapus-draft',{id:r.gardu.id,nama:r.gardu.nama});for(const p of await photosOf(r.id))await dbDel('photos',p.pid);await dbDel('records',r.id);renderGardu(id)}}},'Hapus'));
   card.append(row)}
  if(t.jenis==='tm')card.append(h('div',{class:'mut',style:'margin-top:8px'},'Gardu pelanggan TM: tidak perlu ukur beban trafo.'));
@@ -573,8 +587,95 @@ async function kirim(recs){try{
  if(!shared){const a=h('a',{href:URL.createObjectURL(blob),download:fn});document.body.append(a);a.click();a.remove()}
  if(confirm('Paket sudah dibuat ('+fn+'). Tandai '+recs.length+' inspeksi sebagai terkirim?')){for(const r of recs){r.sentAt=new Date().toISOString();await saveRec(r)}}renderHome()}catch(e){alert('Gagal membuat paket: '+e.message)}}
 
+async function bersihkanDaftar(){const adaRec=new Set(S.records.map(r=>r.gardu.id));const buang=S.tugas.filter(t=>!adaRec.has(t.id));
+ if(!buang.length)return alert('Tidak ada gardu yang bisa dibersihkan: semua gardu di daftar sudah punya data inspeksi atau ukur beban.');
+ if(!(await adminOk('bersihkan daftar gardu',true)))return;
+ if(!confirm('Hapus '+buang.length+' gardu yang BELUM dikerjakan dari daftar di HP ini?\n\n'+(S.tugas.length-buang.length)+' gardu yang sudah punya data inspeksi atau ukur beban tetap ada. Data inspeksi tidak tersentuh. Daftar bisa diimpor lagi dari file Excel.'))return;
+ S.tugas=S.tugas.filter(t=>adaRec.has(t.id));await saveTugas();renderHome();alert('Selesai. '+buang.length+' gardu dibersihkan, '+S.tugas.length+' tersisa.')}
+
+/* ================= kirim langsung ke DIGARDU (Apps Script) ================= */
+const SRV={cfg:{url:'',user:'',pass:'',tok:''}};
+async function srvLoad(){SRV.cfg=Object.assign({url:'',user:'',pass:'',tok:''},(await dbGet('meta','srv'))||{})}
+const srvSimpan=()=>dbPut('meta',SRV.cfg,'srv');
+const urlOk=u=>/^https:\/\/script\.google(usercontent)?\.com\/(a\/[^/]+\/)?macros\/s\/[^/]+\/exec$/.test(String(u||'').trim());
+/* POST teks polos (tanpa preflight CORS); Apps Script membalas JSON */
+async function srvCall(o,ms){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||90000);
+ try{const r=await fetch(SRV.cfg.url,{method:'POST',body:JSON.stringify(o),signal:c.signal,redirect:'follow'});const tx=await r.text();let j;
+  try{j=JSON.parse(tx)}catch(e){throw new Error('Jawaban server bukan data yang dikenal. Cek alamat web app dan akses "Anyone".')}return j}
+ catch(e){if(e.name==='AbortError')throw new Error('Server tidak merespons (lewat '+Math.round((ms||90000)/1000)+' detik). Cek sinyal.');if(e instanceof TypeError)throw new Error('Tidak bisa terhubung ke server. Cek sinyal dan alamat web app.');throw e}
+ finally{clearTimeout(t)}}
+async function srvLogin(){let pw=SRV.cfg.pass;if(!pw){pw=prompt('Password DIGARDU untuk '+SRV.cfg.user+':');if(pw===null)throw new Error('Login dibatalkan.')}
+ const j=await srvCall({aksi:'login',username:SRV.cfg.user,password:pw},60000);if(!j.ok)throw new Error(String(j.error||'Login gagal').replace(/^(SESI|GANTI):\s*/,''));
+ SRV.cfg.tok=j.data&&j.data.token||'';if(!SRV.cfg.tok)throw new Error('Server tidak memberi token login.');await srvSimpan()}
+async function srvAksi(o,ms){if(!SRV.cfg.tok)await srvLogin();let j=await srvCall(Object.assign({},o,{tok:SRV.cfg.tok}),ms);
+ if(!j.ok&&/^SESI:/.test(String(j.error||''))){SRV.cfg.tok='';await srvLogin();j=await srvCall(Object.assign({},o,{tok:SRV.cfg.tok}),ms)}
+ if(!j.ok)throw new Error(String(j.error||'Gagal').replace(/^(SESI|GANTI):\s*/,''));return j.data}
+/* ulang otomatis untuk gangguan jaringan saja (bukan penolakan server) */
+async function srvUlang(o,ms,n){let err;for(let i=0;i<(n||3);i++){try{return await srvAksi(o,ms)}catch(e){err=e;if(!/sinyal|terhubung|merespons/.test(e.message))throw e;await new Promise(r=>setTimeout(r,1500*(i+1)))}}throw err}
+function u8b64(u8){let s='';const C=0x8000;for(let i=0;i<u8.length;i+=C)s+=String.fromCharCode.apply(null,u8.subarray(i,i+C));return btoa(s)}
+
+function srvDialog(){const dlg=h('dialog',null);const inUrl=h('input',{type:'url',placeholder:'https://script.google.com/macros/s/.../exec',value:SRV.cfg.url,autocapitalize:'off',autocomplete:'off',spellcheck:'false'});
+ const inUser=h('input',{type:'text',placeholder:'username DIGARDU',value:SRV.cfg.user,autocapitalize:'off',autocomplete:'off'});
+ const inPass=h('input',{type:'password',placeholder:SRV.cfg.pass?'(tersimpan, kosongkan untuk tetap)':'password',autocomplete:'off'});
+ const ingat=h('input',{type:'checkbox'});ingat.checked=SRV.cfg.pass?true:!SRV.cfg.url;
+ const msg=h('div',{class:'mut',style:'margin-top:10px;min-height:20px'});
+ const ok=h('button',{class:'btn',type:'button'},'Tes dan simpan');
+ ok.onclick=async()=>{const url=inUrl.value.trim(),user=inUser.value.trim();
+  if(!urlOk(url)){msg.textContent='Alamat harus berupa link web app DIGARDU yang berakhiran /exec.';return}
+  if(!user){msg.textContent='Isi username DIGARDU.';return}
+  const pw=inPass.value||SRV.cfg.pass;if(!pw){msg.textContent='Isi password.';return}
+  ok.disabled=true;msg.textContent='Menghubungi server...';const lama=Object.assign({},SRV.cfg);
+  try{SRV.cfg={url,user,pass:pw,tok:''};await srvLogin();const d=await srvAksi({aksi:'ping'},60000);
+   SRV.cfg.pass=ingat.checked?pw:'';await srvSimpan();msg.textContent='Tersambung: '+d.user.nama+' ('+d.user.peran+'), '+d.app+' v'+d.versi+'. Tersimpan.';
+   if(!/^(Petugas|Admin|Super Admin)$/.test(d.user.peran))msg.textContent+=' PERINGATAN: peran '+d.user.peran+' tidak boleh mengirim.'}
+  catch(e){SRV.cfg=lama;msg.textContent='Gagal: '+e.message}ok.disabled=false};
+ const hapus=h('button',{class:'btn sec sm',type:'button'},'Hapus pengaturan');
+ hapus.onclick=async()=>{if(!confirm('Hapus pengaturan server dari HP ini? Pengiriman kembali lewat paket zip.'))return;SRV.cfg={url:'',user:'',pass:'',tok:''};await srvSimpan();dlg.close()};
+ const tutup=h('button',{class:'btn sec sm',type:'button'},'Tutup');tutup.onclick=()=>dlg.close();
+ dlg.append(h('h2',{style:'margin-top:0'},'Server DIGARDU'),h('div',{class:'mut'},'Isi sekali. Setelah itu tombol Kirim langsung mengirim hasil inspeksi dan foto ke DIGARDU lewat internet.'),
+  h('label',{class:'f'},'Alamat web app (link /exec)'),inUrl,h('label',{class:'f'},'Username'),inUser,h('label',{class:'f'},'Password'),inPass,
+  h('label',{style:'display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px'},ingat,'Ingat password di HP ini'),msg,
+  h('div',{class:'row',style:'margin-top:12px'},ok),h('div',{class:'row',style:'margin-top:8px'},hapus,tutup));
+ dlg.addEventListener('close',()=>dlg.remove());document.body.append(dlg);dlg.showModal()}
+
+function kirimUtama(recs){if(SRV.cfg&&SRV.cfg.url&&SRV.cfg.user)return kirimLangsung(recs);
+ if(confirm('Server DIGARDU belum diatur di HP ini.\n\nOK = atur sekarang (Kirim langsung).\nBatal = kirim sebagai paket zip lewat WhatsApp.')){srvDialog();return}
+ return kirim(recs)}
+
+async function kirimLangsung(recs){
+ const held=recs.filter(r=>r.form!=='beban'&&!r.tm&&!bebanOk(r.gardu.id));
+ if(held.length){const names=held.slice(0,8).map(r=>r.gardu.nama).join(', ')+(held.length>8?', …':'');const rest=recs.filter(r=>!held.includes(r));
+  if(!rest.length){if(confirm('TIDAK BISA DIKIRIM: ukur beban trafo belum diisi untuk '+names+'.\n\nIsi ukur beban sekarang?'))return openGardu(tugasOf(held[0]),'beban');return}
+  if(!confirm('DITAHAN (ukur beban trafo belum diisi): '+names+'.\n\nKirim '+rest.length+' inspeksi lainnya sekarang?'))return;recs=rest}
+ const dlg=h('dialog',null),judul=h('h2',{style:'margin-top:0'},'Mengirim ke DIGARDU'),log=h('div',{class:'kl'}),tutup=h('button',{class:'btn',type:'button',disabled:true},'Tutup');
+ const zipBtn=h('button',{class:'btn sec sm',type:'button',style:'display:none'},'Kirim yang gagal sebagai zip');
+ const tulis=(t,c)=>{const d=h('div',{class:c||''},t);log.append(d);log.scrollTop=log.scrollHeight};
+ dlg.addEventListener('cancel',e=>e.preventDefault());tutup.onclick=()=>{dlg.close()};dlg.addEventListener('close',()=>{dlg.remove();renderHome()});
+ dlg.append(judul,h('div',{class:'mut',style:'margin-bottom:8px'},'Jangan tutup halaman ini sampai selesai. Data tetap aman di HP kalau gagal.'),log,h('div',{class:'row',style:'margin-top:12px'},tutup),h('div',{class:'row',style:'margin-top:8px'},zipBtn));
+ document.body.append(dlg);dlg.showModal();
+ const st={masuk:0,sudah:0,dihapus:0,gagal:[]};const gagalRecs=[];
+ for(const r of recs){const nm=r.gardu.nama+' ('+(r.form==='beban'?'ukur beban':'inspeksi '+r.form)+')';
+  try{
+   const c=await srvUlang({aksi:'cek',id:r.id},60000,3);
+   if(c.ada){tulis('• '+nm+': sudah ada di server','o');if(c.status==='Dihapus')st.dihapus++;else st.sudah++;r.sentAt=new Date().toISOString();await saveRec(r);continue}
+   const pm=[],bytesBy={};
+   for(const p of await photosOf(r.id)){const u8=new Uint8Array(await p.blob.arrayBuffer());pm.push({pid:p.pid,ref:p.ref,file:`${p.pid}.jpg`,crc:crc32(u8),ts:p.ts,wm:p.wm!==false});bytesBy[p.pid]=u8}
+   let n=0;for(const f of pm){n++;tulis('• '+nm+': foto '+n+'/'+pm.length+'...');await srvUlang({aksi:'foto',id:r.id,tanggal:r.tanggal,pid:f.pid,crc:f.crc,data:u8b64(bytesBy[f.pid])},120000,3);delete bytesBy[f.pid]}
+   const rec=Object.assign({},r,{foto:pm,skema:FORMS[r.form]});
+   let res=await srvUlang({aksi:'kirim',rec},120000,3);
+   if(res.status==='foto_kurang')throw new Error('foto belum lengkap di server ('+(res.kurang||[]).length+'), coba kirim ulang');
+   if(res.status==='masuk'){st.masuk++;tulis('✓ '+nm+': terkirim','o')}else if(res.status==='sudah'){st.sudah++;tulis('✓ '+nm+': sudah ada di server','o')}else if(res.status==='dihapus'){st.dihapus++;tulis('• '+nm+': pernah dihapus di DIGARDU, dilewati','o')}
+   r.sentAt=new Date().toISOString();await saveRec(r)
+  }catch(e){st.gagal.push(nm+': '+e.message);gagalRecs.push(r);tulis('✗ '+nm+': '+e.message,'e');
+   if(/sinyal|terhubung|merespons/.test(e.message)){const sisa=recs.length-recs.indexOf(r)-1;if(sisa>0)tulis('Koneksi bermasalah, pengiriman dihentikan. '+sisa+' lainnya belum dicoba.','e');break}}}
+ judul.textContent=st.gagal.length?'Selesai dengan masalah':'Selesai';
+ tulis('\nTerkirim baru: '+st.masuk+' · sudah ada: '+st.sudah+(st.dihapus?' · pernah dihapus: '+st.dihapus:'')+' · gagal: '+st.gagal.length);
+ if(st.gagal.length){tulis('Yang gagal tetap tersimpan di HP dan belum ditandai terkirim. Coba lagi nanti, atau kirim sebagai paket zip.','e');
+  zipBtn.style.display='';zipBtn.onclick=()=>{dlg.close();kirim(gagalRecs)}}
+ tutup.disabled=false}
+
 /* ================= start ================= */
-openDB().then(()=>{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();return renderHome()}).catch(e=>{app.textContent='Gagal membuka penyimpanan lokal: '+e.message+' (jangan pakai mode private/incognito).'});
+openDB().then(()=>srvLoad()).then(()=>{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();return renderHome()}).catch(e=>{app.textContent='Gagal membuka penyimpanan lokal: '+e.message+' (jangan pakai mode private/incognito).'});
 </script>
 </body>
 </html>
