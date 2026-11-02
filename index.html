@@ -15,6 +15,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 header.top{position:sticky;top:0;z-index:5;background:var(--hdr);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd);color:var(--tx);padding:10px 14px;display:flex;align-items:center;gap:10px}
 header.top h1{font-size:16px;margin:0;flex:1;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);text-shadow:var(--glow);font-weight:800}
 header.top button{background:transparent;color:var(--acc);border:1px solid var(--bd);border-radius:10px;padding:7px 11px;min-height:38px}
+header.top .clock{display:flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--bd);border-radius:20px;font-family:ui-monospace,Consolas,monospace;font-size:12px;white-space:nowrap;color:var(--tx)}
+header.top .clock svg{color:var(--acc);flex-shrink:0}
+header.top .clock-sep{width:1px;height:14px;background:var(--bd);margin:0 4px}
+@media(max-width:620px){header.top{flex-wrap:wrap}header.top .clock{order:9;flex-basis:100%;justify-content:center}}
 header.top .seg{flex:1;display:flex;gap:0;border:1px solid var(--bd);border-radius:10px;overflow:hidden;min-width:0}
 header.top .seg button{flex:1;border:0;border-radius:0;font-weight:800;font-size:13px;padding:7px 4px;min-height:38px;white-space:nowrap}
 header.top .seg button.on{background:var(--acc);color:#fff}
@@ -117,10 +121,10 @@ main.hastab{padding-bottom:96px}
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
-const VERSI='2 Nov 2026 · v9.4 (beranda inspeksi disamakan)';
+const VERSI='2 Nov 2026 · v9.5 (tanggal dan jam)';
 /* ================= util ================= */
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){const v=attrs[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(k,v===true?'':v);}for(const c of kids.flat(2)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;}
-const ICON={bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',gauge:'<path d="M12 14l4-4"/><path d="M3.3 17a10 10 0 1 1 17.4 0"/>',inbox:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'};
+const ICON={calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',gauge:'<path d="M12 14l4-4"/><path d="M3.3 17a10 10 0 1 1 17.4 0"/>',inbox:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'};
 Object.assign(ICON,{menu:'<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',list:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',check:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'});
 function ico(n,sz){const s=document.createElementNS('http://www.w3.org/2000/svg','svg');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('width',sz||16);s.setAttribute('height',sz||16);s.setAttribute('fill','none');s.setAttribute('stroke','currentColor');s.setAttribute('stroke-width','2');s.setAttribute('stroke-linecap','round');s.setAttribute('stroke-linejoin','round');s.setAttribute('aria-hidden','true');s.innerHTML=ICON[n]||'';return s}
 const THEME={get(){try{return localStorage.getItem('ig_tema')||''}catch(e){return''}},set(v){try{localStorage.setItem('ig_tema',v)}catch(e){}}};
@@ -301,7 +305,7 @@ async function fillThumbs(box,rec,ref,locked){box.innerHTML='';const ps=(await p
 /* ================= navigasi ================= */
 const app=$('#app');
 function topBar(title,back,home){const tb=h('button',{class:'ibtn',title:'Ganti tema terang/gelap','aria-label':'Ganti tema',onclick:()=>{THEME.set(isDark()?'light':'dark');applyTheme();tb.textContent='';tb.append(ico(isDark()?'moon':'sun',18))}},ico(isDark()?'moon':'sun',18));
- return h('header',{class:'top'},back?h('button',{onclick:back},'‹ Kembali'):(home?h('button',{class:'ibtn',type:'button',title:'Menu','aria-label':'Buka menu',onclick:openMenu},ico('menu',20)):h('div',{class:'logo'},ico('bolt',20))),(home&&S.mode&&!timMode()?modeSeg():h('h1',null,title)),tb)}
+ return h('header',{class:'top'},back?h('button',{onclick:back},'‹ Kembali'):(home?h('button',{class:'ibtn',type:'button',title:'Menu','aria-label':'Buka menu',onclick:openMenu},ico('menu',20)):h('div',{class:'logo'},ico('bolt',20))),(home&&S.mode&&!timMode()?modeSeg():h('h1',null,title)),jamEl(),tb)}
 function dlg(title,fields){return new Promise(res=>{const d=h('dialog');const inputs={};const f=h('form',{method:'dialog'},h('h3',null,title));for(const fl of fields){f.append(h('label',{class:'f'},fl.label));const i=fl.opts?h('select',null,fl.opts.map(o=>h('option',{value:o[0]},o[1]))):h('input',fl.pw?{type:'password',inputmode:'numeric',autocomplete:'off',maxlength:'6',value:''}:{type:'text',value:fl.value||''});if(fl.opts&&fl.value)i.value=fl.value;inputs[fl.key]=i;f.append(i)}
  f.append(h('div',{class:'row',style:'margin-top:12px'},h('button',{class:'btn sec',value:'x',type:'submit'},'Batal'),h('button',{class:'btn',value:'ok',type:'submit'},'OK')));d.append(f);document.body.append(d);d.addEventListener('close',()=>{const ok=d.returnValue==='ok';const o={};for(const k in inputs)o[k]=inputs[k].value.trim();d.remove();res(ok?o:null)});d.showModal()})}
 /* ===== PIN admin: impor penugasan, tambah gardu manual, hapus gardu ===== */
@@ -789,6 +793,14 @@ async function cekDiServer(recs){const r2=recs.filter(r=>r.status==='selesai');i
  if(!(SRV.cfg&&SRV.cfg.url&&SRV.cfg.user))return'TIDAK DIHAPUS: server DIGARDU belum diatur di HP ini, jadi belum bisa dipastikan datanya sudah ada di server.';
  try{for(const r of r2){const d=await srvUlang({aksi:'cek',id:r.id},30000);if(!d||!d.ada)return'TIDAK DIHAPUS: ada laporan yang belum ditemukan di server DIGARDU ('+((r.gardu&&r.gardu.nama)||r.id)+'). Kirim ulang dulu.'}}
  catch(e){return'TIDAK DIHAPUS: tidak bisa memastikan data sudah ada di server.\n'+e.message}return''}
+
+/* tanggal dan jam: format sama dengan aplikasi DIGARDU (Sen, 2 Nov 2026 | 15.21.07) */
+const JAM_HARI=['Min','Sen','Sel','Rab','Kam','Jum','Sab'],JAM_BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const jam2=n=>(n<10?'0':'')+n;
+function jamEl(){return h('div',{class:'clock',title:'Tanggal dan jam perangkat ini'},ico('calendar',14),h('span',{class:'jt'}),h('span',{class:'clock-sep'}),ico('clock',14),h('span',{class:'jj'}))}
+function tickJam(){const d=new Date(),t=JAM_HARI[d.getDay()]+', '+d.getDate()+' '+JAM_BLN[d.getMonth()]+' '+d.getFullYear(),j=jam2(d.getHours())+'.'+jam2(d.getMinutes())+'.'+jam2(d.getSeconds());
+ document.querySelectorAll('.clock .jt').forEach(e=>{if(e.textContent!==t)e.textContent=t});document.querySelectorAll('.clock .jj').forEach(e=>e.textContent=j)}
+setInterval(tickJam,1000);
 
 /* pemilih mode di dalam header (akun bebas); akun terkunci: judul header saja */
 function modeSeg(){const b=(m,l)=>h('button',{type:'button',class:S.mode===m?'on':'','aria-pressed':S.mode===m?'true':'false',onclick:async()=>{if(S.mode===m)return;S.mode=m;await dbPut('meta',m,'mode');renderHome()}},l);
