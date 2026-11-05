@@ -762,11 +762,16 @@ function pmTabs(){const nA=S.items.filter(i=>!pmTuntas(i)).length,nS=S.items.len
 async function pmHome(){await loadState();app.innerHTML='';app.append(topBar('Pemeliharaan Gardu',null,true));
  const m=h('main',{class:'hastab'});{const c=pengingat(pmQueue(),pmKirimSekarang);if(c)m.append(c)}
  if(!S.items.length){m.append(h('div',{class:'card'},h('div',{class:'gname'},'Belum ada rencana'),h('p',{class:'mut'},'Minta paket rencana (file .json) dari kantor lewat WhatsApp, simpan di HP ini, lalu impor.'),h('button',{class:'btn',type:'button',onclick:pmPilihPaket},ico('inbox',18),'Impor paket rencana')));app.append(m,pmTabs());return}
- const q=h('input',{type:'text',placeholder:'Cari gardu, kode, atau pekerjaan',value:PM_LF.q,oninput:e=>{PM_LF.q=e.target.value;debounce(()=>draw(),250)}});m.append(h('div',{class:'fil'},q));
+ const adaTab=S.items.some(i=>pmTuntas(i)===(PM_LF.tab==='selesai'));
+ if(!adaTab){PM_LF.q=''}
+ else{const q=h('input',{type:'text',placeholder:'Cari gardu, kode, atau pekerjaan',value:PM_LF.q,oninput:e=>{PM_LF.q=e.target.value;debounce(()=>draw(),250)}});m.append(h('div',{class:'fil'},q))}
  const box=h('div');m.append(box);
  function draw(){box.innerHTML='';const sel=PM_LF.tab==='selesai',qq=PM_LF.q.toLowerCase();
   const L=S.items.filter(i=>pmTuntas(i)===sel&&(!qq||(i.gardu+' '+i.kode+' '+i.pekerjaan+' '+i.rencana_id).toLowerCase().includes(qq)));
-  if(!L.length){box.append(h('div',{class:'card mut'},sel?'Belum ada yang selesai dan terkirim.':'Tidak ada rencana yang cocok.'));return}
+  if(!L.length&&!adaTab){box.append(h('div',{class:'card'},h('div',{class:'gname'},sel?'Belum ada yang selesai':'Belum ada rencana'),
+    h('p',{class:'mut'},sel?'Rencana yang sudah selesai dan terkirim ke DIGARDU akan muncul di sini.':(S.items.length?'Semua rencana yang ada sudah selesai. Minta paket rencana baru (file .json) dari kantor lewat WhatsApp, simpan di HP ini, lalu impor.':'Minta paket rencana (file .json) dari kantor lewat WhatsApp, simpan di HP ini, lalu impor.')),
+    sel?null:h('button',{class:'btn',type:'button',onclick:pmPilihPaket},ico('inbox',18),'Impor paket rencana')));return}
+  if(!L.length){box.append(h('div',{class:'card mut'},'Tidak ada rencana yang cocok.'));return}
   L.sort((a,b)=>(a.tanggal+a.jam_mulai).localeCompare(b.tanggal+b.jam_mulai));let last='';
   for(const it of L){if(it.tanggal!==last){last=it.tanggal;const lw=!sel&&it.tanggal<today();box.append(h('h2',null,pmTgl(it.tanggal)+(it.tanggal===today()?' · hari ini':'')+(lw?' · lewat jadwal':'')))}
    const [st,cls]=pmStatus(it);
