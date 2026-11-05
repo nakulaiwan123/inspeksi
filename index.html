@@ -139,7 +139,7 @@ main.hastab{padding-bottom:96px}
 <input type="file" id="fcsv" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <script>
 'use strict';
-const VERSI='3 Nov 2026 · v9.10 (pilihan pemeliharaan biru)';
+const VERSI='5 Nov 2026 · v9.11 (urutan form: sistematis dan BA dilipat, foto di akhir)';
 /* ================= util ================= */
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){const v=attrs[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(k,v===true?'':v);}for(const c of kids.flat(2)){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;}
 const ICON={calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',gauge:'<path d="M12 14l4-4"/><path d="M3.3 17a10 10 0 1 1 17.4 0"/>',inbox:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',plus:'<path d="M12 5v14M5 12h14"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'};
@@ -863,8 +863,12 @@ async function pmForm(rid,baru){const it=S.items.find(x=>x.rencana_id===rid);if(
   const mk=()=>{persist();return{rec,ref,label,note,after:()=>fillThumbs(box,rec,ref,locked)}};
   const c=h('div',{class:'card'},h('div',{class:'sech'},pmL(label+(wajib?' (minimal 1)':' (opsional)')),h('span',{class:'badge draft fcount'},'Belum ada foto')),locked?null:h('div',{class:'row'},photoBtn('📷 Foto',false,mk),photoBtn('🖼 Galeri',true,mk)),note,box);fillThumbs(box,rec,ref,locked);return c}
  function ceki(v,ph,k,o){const e=h('input',{type:'text',placeholder:ph,autocomplete:'off'});return bind(e,k,o)}
- function checklist(){const wrap=h('div');
-  wrap.append(h('div',{class:'card'},h('div',{class:'gname'},'Form pemeliharaan sistematis'),h('div',{class:'mut'},'FM-bright-SBU-DI-ST-02-07 B · gardu beton. Centang tindakan yang dikerjakan per item. Item yang tidak disentuh dikosongkan saja.')));
+ const buka={};
+ function pantau(d,k){d.addEventListener('toggle',()=>{buka[k]=d.open})}
+ function checklist(){const wrap=h('details',{class:'card','data-sis':'1'});
+  const nItem=PM_SIS.reduce((n,g)=>n+g.items.length,0),pTot=h('span',{class:'badge'});
+  const updTot=()=>{const n=pmCekLap(rec).length;pTot.textContent=n+'/'+nItem+' item';pTot.className='badge '+(n?'ok':'draft')};
+  wrap.append(h('summary',{style:'font-weight:700;cursor:pointer'},'Form pemeliharaan sistematis ',pTot),h('div',{class:'mut',style:'margin:6px 0'},'FM-bright-SBU-DI-ST-02-07 B · gardu beton. Centang tindakan yang dikerjakan per item. Item yang tidak disentuh dikosongkan saja.'));
   const temuanNo={};(it.temuan||[]).forEach(t=>{if(t.no)(temuanNo[t.no]=temuanNo[t.no]||[]).push(t)});
   for(const g of PM_SIS){const det=h('details',{class:'card'});const jml=()=>g.items.reduce((s,i)=>s+(((rec.cek[i.n]||{}).t||[]).length>0||String((rec.cek[i.n]||{}).c||'').trim()?1:0),0);
    const sum=h('summary',{style:'font-weight:700;cursor:pointer'},g.g+' ');const bd=h('span',{class:'badge'},jml()+'/'+g.items.length);sum.append(bd);det.append(sum);
@@ -873,16 +877,20 @@ async function pmForm(rid,baru){const it=S.items.find(x=>x.rencana_id===rid);if(
     row.append(h('div',{class:'t'},i.n+'. '+i.t));
     (temuanNo[i.n]||[]).forEach(t=>row.append(h('div',{class:'warn',style:'margin-bottom:6px'},'Temuan inspeksi: '+[t.kondisi,t.nilai,t.catatan].filter(Boolean).join(', '))));
     const chips=h('div',{class:'chips'});
-    for(const o of i.o){const x=h('input',{type:'checkbox'});x.checked=c.t.includes(o);x.onchange=()=>{c.t=c.t.filter(z=>z!==o);if(x.checked)c.t.push(o);touch();bd.textContent=jml()+'/'+g.items.length};chips.append(h('label',null,x,h('span',{class:'chip good'},o)))}
+    for(const o of i.o){const x=h('input',{type:'checkbox'});x.checked=c.t.includes(o);x.onchange=()=>{c.t=c.t.filter(z=>z!==o);if(x.checked)c.t.push(o);touch();bd.textContent=jml()+'/'+g.items.length;updTot()};chips.append(h('label',null,x,h('span',{class:'chip good'},o)))}
     row.append(chips);
     if(i.ohm){row.append(pmL('Nilai ukur grounding (Ω)'),bind(h('input',{type:'text',inputmode:'decimal',placeholder:'mis. 6,06'}),'ohm'))}
-    row.append(h('div',{style:'height:6px'}),(()=>{const e=h('input',{type:'text',placeholder:'Tindakan lain / hasil / saran (opsional)',autocomplete:'off'});e.value=c.c||'';e.addEventListener('input',()=>{c.c=e.value;touch();bd.textContent=jml()+'/'+g.items.length});return e})());
+    row.append(h('div',{style:'height:6px'}),(()=>{const e=h('input',{type:'text',placeholder:'Tindakan lain / hasil / saran (opsional)',autocomplete:'off'});e.value=c.c||'';e.addEventListener('input',()=>{c.c=e.value;touch();bd.textContent=jml()+'/'+g.items.length;updTot()});return e})());
     det.append(row)}
    wrap.append(det)}
   wrap.append(h('div',{class:'card'},pmL('Catatan lain'),pmL2('KWH pantau terpasang'),bind(h('input',{type:'text'}),'kwh'),pmL2('Merk KWH / modem'),bind(h('input',{type:'text'}),'merk_kwh'),pmL2('Ratio CT'),bind(h('input',{type:'text'}),'ratio_ct'),pmL2('Catatan tambahan (opsional)'),bind(h('textarea',{rows:'3'}),'ekstra')));
+  updTot();wrap.open=buka.sis!==undefined?!!buka.sis:!!(it.temuan||[]).length;pantau(wrap,'sis');
   return wrap}
  function pmL2(t){return h('div',{class:'mut',style:'margin-top:8px'},t)}
- function baperalatan(){const b=rec.ba,c=h('details',{class:'card'});c.append(h('summary',{style:'font-weight:700;cursor:pointer'},'BA pemeriksaan peralatan gardu (FM-bright-SBU-DIST-02-03)'));
+ function baperalatan(){const b=rec.ba,c=h('details',{class:'card'}),pb=h('span',{class:'badge'});
+  const updBA=()=>{const n=b.rows.filter(r=>['jumlah','type','merk','noseri','kap'].some(k=>String(r[k]||'').trim())).length;pb.textContent=n+'/'+b.rows.length+' baris';pb.className='badge '+(n?'ok':'draft')};
+  updBA();c.addEventListener('input',updBA);c.open=!!buka.ba;pantau(c,'ba');
+  c.append(h('summary',{style:'font-weight:700;cursor:pointer'},'BA pemeriksaan peralatan gardu (FM-bright-SBU-DIST-02-03) ',pb));
   c.append(h('div',{class:'mut',style:'margin:6px 0'},'Diisi di hari pemeliharaan yang sama. Kosongkan baris yang tidak ada.'),pmL('Jenis gardu'));
   const js=h('select',null,[['distribusi','Gardu distribusi'],['tm','Gardu pelanggan TM']].map(o=>h('option',{value:o[0]},o[1])));bind(js,'jenis_gardu',b);c.append(js);
   const fld=(lbl,k,r,at)=>h('div',null,h('label',null,lbl),bind(h('input',Object.assign({type:'text',autocomplete:'off'},at||{})),k,r));
@@ -892,8 +900,8 @@ async function pmForm(rid,baru){const it=S.items.find(x=>x.rencana_id===rid);if(
   c.append(pmL('Catatan realisasi pemeliharaan'),bind(h('textarea',{rows:'3',placeholder:'Kosong = terisi otomatis dari tindakan yang dicentang'}),'realisasi',b),pmL('Pengawas'),bind(h('input',{type:'text'}),'pengawas',b));return c}
  function isi(){sec.innerHTML='';
   if(rec.hasil!=='terlaksana'){sec.append(h('div',{class:'card'},pmL(rec.hasil==='ditunda'?'Alasan ditunda (wajib)':'Alasan batal (wajib)'),bind(h('textarea',{placeholder:rec.hasil==='ditunda'?'mis. hujan, pelanggan belum siap, material belum ada':'mis. permintaan pelanggan, gardu sudah dikerjakan'}),'alasan'),
-    h('p',{class:'mut'},rec.hasil==='ditunda'?'Rencana tetap terjadwal di kantor. Kantor yang menentukan tanggal baru.':'Rencana dibatalkan di DIGARDU dan temuannya kembali terbuka.')),fotoBox('bukti','Foto bukti',false));
-   sec.append(temuanBaruCard());return}
+    h('p',{class:'mut'},rec.hasil==='ditunda'?'Rencana tetap terjadwal di kantor. Kantor yang menentukan tanggal baru.':'Rencana dibatalkan di DIGARDU dan temuannya kembali terbuka.')));
+   sec.append(temuanBaruCard(),fotoBox('bukti','Foto bukti',false));return}
   sec.append(h('div',{class:'card'},pmL('Padam nyata'),h('div',{class:'row'},h('div',null,h('small',{class:'mut'},'Mulai'),bind(pmJamInput(),'jam_mulai')),h('div',null,h('small',{class:'mut'},'Selesai'),bind(pmJamInput(),'jam_selesai'))),
    h('label',{style:'display:flex;gap:10px;align-items:center;margin-top:12px'},(()=>{const c=h('input',{type:'checkbox',style:'width:22px;height:22px'});c.checked=!!rec.surat;c.onchange=()=>{rec.surat=c.checked;touch()};return c})(),'Surat pemberitahuan sudah disampaikan ke pelanggan')));
   /* bentuk laporan */
@@ -911,13 +919,15 @@ async function pmForm(rid,baru){const it=S.items.find(x=>x.rencana_id===rid);if(
    const ur=bind(h('textarea',{placeholder:'Apa yang dikerjakan dan bagaimana hasilnya',rows:'4'}),'uraian');
    const kata=h('div',{class:'chips',style:'margin-top:8px'});for(const k of PM_KATA)kata.append(h('button',{type:'button',class:'chip',style:'cursor:pointer',onclick:()=>{const v=(ur.value.trim()?ur.value.trim().replace(/[;.]$/,'')+'; ':'')+k;ur.value=v;rec.uraian=v;touch()}},k));
    sec.append(h('div',{class:'card'},pmL('Jenis pekerjaan'),jenisSel,trafoBox,pmL('Hasil / uraian pekerjaan'),ur,kata,pmL('Catatan tambahan (opsional)'),bind(h('input',{type:'text'}),'ket')))}
+  sec.append(baperalatan());
   if((it.temuan||[]).length){const c=h('div',{class:'card'},pmL('Temuan dalam rencana'));const alasan=h('div');
    const ra=()=>{alasan.innerHTML='';if(Object.values(rec.putusan).includes('tanpa'))alasan.append(pmL('Alasan tidak perlu tindakan (wajib)'),bind(h('input',{type:'text',placeholder:'mis. kondisi masih baik saat dicek'}),'alasan_tanpa'))};
    for(const t of it.temuan){const s=h('select',null,[['selesai','Selesai dikerjakan'],['tanpa','Tidak perlu tindakan'],['belum','Belum dikerjakan']].map(o=>h('option',{value:o[0]},o[1])));s.value=rec.putusan[t.temuan_id]||'selesai';s.onchange=()=>{rec.putusan[t.temuan_id]=s.value;touch();ra()};
     c.append(h('div',{class:'item'},h('div',{class:'t'},(t.no?t.no+'. ':'')+[t.grup,t.item].filter(Boolean).join(' · ')),h('div',{class:'mut',style:'margin-bottom:6px'},[t.kondisi,t.nilai,t.catatan].filter(Boolean).join(', ')),s))}
    c.append(alasan);ra();sec.append(c)}
-  sec.append(fotoBox('sebelum','Foto SEBELUM',true),fotoBox('sesudah','Foto SESUDAH',true),baperalatan(),temuanBaruCard());
-  sec.append(h('div',{class:'card'},pmL('Petugas pelaksana (wajib)'),bind(h('input',{type:'text',placeholder:'Nama petugas / regu'}),'petugas')))}
+  sec.append(temuanBaruCard());
+  sec.append(h('div',{class:'card'},pmL('Petugas pelaksana (wajib)'),bind(h('input',{type:'text',placeholder:'Nama petugas / regu'}),'petugas')));
+  sec.append(fotoBox('sebelum','Foto SEBELUM',true),fotoBox('sesudah','Foto SESUDAH',true))}
  function temuanBaruCard(){const c=h('div',{class:'card'});
   function draw(){c.innerHTML='';c.append(pmL('Temuan baru dari lapangan (opsional)'),h('div',{class:'mut'},'Kerusakan lain yang belum ada di rencana. Masuk ke daftar temuan di kantor.'));
    rec.temuan_baru.forEach((t,i)=>{c.append(h('div',{class:'jr'},bind(h('input',{type:'text',placeholder:'Temuan (mis. Pagar miring)'}),'item',t),h('div',{style:'height:6px'}),bind(h('input',{type:'text',placeholder:'Kondisi / catatan'}),'catatan',t),
@@ -946,7 +956,9 @@ async function pmSelesai(it,rec,persist){const e=[];
   if(vals.length&&vals.every(v=>v==='belum'))e.push('Semua temuan "belum dikerjakan". Kalau memang belum dikerjakan, pilih status Ditunda.');
   if(!String(rec.petugas||'').trim())e.push('Isi nama petugas.');
   const ps=await photosOf(rec.id);if(!ps.some(p=>p.ref==='sebelum'))e.push('Foto SEBELUM minimal 1.');if(!ps.some(p=>p.ref==='sesudah'))e.push('Foto SESUDAH minimal 1.')}
- if(e.length)return await alertX('Belum bisa diselesaikan:\n\n• '+e.join('\n• '));
+ if(e.length){await alertX('Belum bisa diselesaikan:\n\n• '+e.join('\n• '));
+  if(rec.hasil==='terlaksana'&&rec.sis&&e.some(x=>x.includes('form sistematis'))){const d=document.querySelector('details[data-sis]');if(d){d.open=true;d.style.borderColor='var(--red,#ef4444)';try{d.scrollIntoView({block:'start'})}catch(x){}}}
+  return}
  if(!await confirmX('Selesaikan dan kunci laporan ini? Setelah dikunci siap dikirim ke DIGARDU.'))return;
  rec.temuan_baru=rec.temuan_baru.filter(t=>String(t.item||'').trim());
  if(rec.hasil==='terlaksana'&&rec.sis){rec.cek_lap=pmCekLap(rec);const r=pmRingkasSis(rec);rec.uraian='Pemeliharaan sistematis. '+r+(String(rec.ekstra||'').trim()?' · '+String(rec.ekstra).trim():'')}
